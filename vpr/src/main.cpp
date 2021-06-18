@@ -13,6 +13,9 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <fstream>
+#include <string>
+#include <iostream>
 using namespace std;
 
 #include "vtr_error.h"
@@ -48,12 +51,16 @@ int main(int argc, const char** argv) {
     t_options Options = t_options();
     t_arch Arch = t_arch();
     t_vpr_setup vpr_setup = t_vpr_setup();
+   
 
     try {
         vpr_install_signal_handler();
 
         /* Read options, architecture, and circuit netlist */
         vpr_init(argc, argv, &Options, &vpr_setup, &Arch);
+        g_vpr_ctx.mutable_routing().circuitname= vpr_setup.FileNameOpts.CircuitName;
+        // g_vpr_ctx.mutable_routing().archname= "earch";
+            g_vpr_ctx.mutable_routing().archname= "titan";
 
         if (Options.show_version) {
             return SUCCESS_EXIT_CODE;
@@ -75,10 +82,39 @@ int main(int argc, const char** argv) {
                 timing_ctx.stats.num_full_hold_updates,
                 timing_ctx.stats.num_full_setup_hold_updates);
 
+        auto& device_ctx = g_vpr_ctx.device();
+        auto& route_ctx = g_vpr_ctx.routing();
+        std::ofstream myfile;
+        // Test. 
+        
+        myfile.open("../"+route_ctx.archname+"_last_"+vpr_setup.FileNameOpts.CircuitName+"_historycosts.csv");
+        myfile<< "Node_ID,History_Cost\n";
+        for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+        {
+            
+            myfile << to_string(inode)+","+to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
+
+        }
+        myfile.close();
+        myfile.open("../"+route_ctx.archname+"_last_"+vpr_setup.FileNameOpts.CircuitName+"_edgelist.csv");
+        myfile<< "src_node,sink_node\n";
+        for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+        {   
+            auto& node = device_ctx.rr_nodes[inode];
+            for( size_t iedge = 0; iedge < device_ctx.rr_nodes[inode].num_edges(); iedge++)
+            {
+                myfile << to_string(inode)+","+to_string(node.edge_sink_node(iedge))+"\n";
+            }
+           
+
+        }
+        myfile.close();
         /* free data structures */
+        
         vpr_free_all(Arch, vpr_setup);
 
         VTR_LOG("VPR suceeded\n");
+      
 
     } catch (const tatum::Error& tatum_error) {
         VTR_LOG_ERROR("%s\n", format_tatum_error(tatum_error).c_str());

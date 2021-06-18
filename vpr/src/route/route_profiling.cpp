@@ -77,7 +77,7 @@ void net_rebuild_end(unsigned net_fanout, unsigned sinks_left_to_route) {
     unsigned int bin{net_fanout / fanout_per_bin};
     unsigned int sinks_already_routed = net_fanout - sinks_left_to_route;
     float rebuild_time{static_cast<float>(clock() - net_rebuild_clock) / CLOCKS_PER_SEC};
-
+    
     finished_sinks[bin] += sinks_already_routed;
     rerouted_sinks[bin] += sinks_left_to_route;
     time_on_fanout_rebuild[bin] += rebuild_time;

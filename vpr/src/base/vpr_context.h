@@ -251,6 +251,11 @@ struct PlacementContext : public Context {
 //This should contain only data structures that describe the current routing implementation,
 //or related router algorithmic state.
 struct RoutingContext : public Context {
+    
+    std::string circuitname; // Name of the Circuit 
+    std::string archname; // Name of the Architecture
+    bool inference_mode;
+    std::string inference_path; // File Path to inference
     /* [0..num_nets-1] of linked list start pointers.  Defines the routing.  */
     vtr::vector<ClusterNetId, t_traceback> trace;
     vtr::vector<ClusterNetId, std::unordered_set<int>> trace_nodes;

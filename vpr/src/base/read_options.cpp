@@ -1422,6 +1422,11 @@ static argparse::ArgumentParser create_arg_parser(std::string prog_name, t_optio
         .help("The net fanout threshold above which nets will be re-routed incrementally.")
         .default_value("16")
         .show_in(argparse::ShowIn::HELP_ONLY);
+    // GNN VPR
+    route_grp.add_argument<bool, ParseOnOff>(args.do_inference, "--do_inference")
+        .help("Routing Costs will be input from GNN Inference")
+        .default_value("off")
+        .show_in(argparse::ShowIn::HELP_ONLY);
 
     auto& route_timing_grp = parser.add_argument_group("timing-driven routing options");
 

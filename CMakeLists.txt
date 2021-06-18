@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.16)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 include(SupportCcache)
@@ -67,7 +67,7 @@ include(CheckCXXCompilerFlag)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) #No compiler specific extensions
-
+set(CMAKE_CXX_FLAGS "-O3")
 #
 # Interprocedural optimization
 #
@@ -328,7 +328,7 @@ endif()
 
 #We don't control the ABC cmake file, so we need to manually unset the IPO flags
 #to avoid cmake dev warnings due to it's old cmake version policy
-set_target_properties(abc libabc libabc-pic PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
+set_target_properties(abc libabc libabc-pic PROPERTIES INTERPROCEDURAL_OPTIMIZATION ON)
 
 #
 #

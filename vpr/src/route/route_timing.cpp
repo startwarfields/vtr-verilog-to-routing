@@ -12,6 +12,7 @@
 #include "vpr_utils.h"
 #include "vpr_types.h"
 #include "vpr_error.h"
+#include "vpr_api.h"
 
 #include "globals.h"
 #include "route_export.h"
@@ -404,6 +405,16 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
     vtr::Timer iteration_timer;
     int num_net_bounding_boxes_updated = 0;
     int itry_since_last_convergence = -1;
+    std::ofstream myfile;
+    auto& device_ctx = g_vpr_ctx.device();
+    // auto& route_ctx = g_vpr_ctx.mutable_routing();
+    FILE * fp;
+    char *ptr;
+    char * line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    bool gnn_load = false;
+
     for (itry = 1; itry <= router_opts.max_router_iterations; ++itry) {
         RouterStats router_iteration_stats;
 
@@ -452,6 +463,8 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                 return (false); //Impossible to route
             }
         }
+        
+    
 
         // Make sure any CLB OPINs used up by subblocks being hooked directly to them are reserved for that purpose
         bool rip_up_local_opins = (itry == 1 ? false : true);
@@ -496,9 +509,42 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         } else {
             update_screen(ScreenUpdatePriority::MINOR, "Routing...", ROUTING, timing_info);
         }
+        // * Output Combined pdf
+        // if (itry==1)
+        //     {   
+                
+        //         std::ofstream myfile;
+        //         auto& device_ctx = g_vpr_ctx.device();
+        //         // auto& route_ctx = g_vpr_ctx.mutable_routing();
+        //         myfile.open("../"+route_ctx.archname+"_first_"+route_ctx.circuitname+"_historycosts.csv");
+        //         myfile<< "Node_ID,History_Cost\n";
+        //         for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+        //         {
+                    
+        //             myfile << to_string(inode)+","+to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
 
+        //         }
+        //         myfile.close();
+        //         myfile.open("../"+route_ctx.archname+"_first_"+route_ctx.circuitname+"_edgelist.csv");
+        //         myfile<< "src_node,sink_node\n";
+        //         for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+        //         {   
+        //             auto& node = device_ctx.rr_nodes[inode];
+        //             for( size_t iedge = 0; iedge < device_ctx.rr_nodes[inode].num_edges(); iedge++)
+        //             {
+        //                 myfile << to_string(inode)+","+to_string(node.edge_sink_node(iedge))+"\n";
+        //             }
+                
+
+        //         }
+        //         myfile.close();
+                
+
+        //     }
         if (router_opts.save_routing_per_iteration) {
             std::string filename = vtr::string_fmt("iteration_%03d.route", itry);
+
+           
             print_route(nullptr, filename.c_str());
         }
 
@@ -599,10 +645,41 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         }
 
         //Update pres_fac and resource costs
-        if (itry == 1) {
-            pres_fac = router_opts.initial_pres_fac;
-            pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */
-        } else {
+        gnn_load = false;
+        if (itry == 1 && !gnn_load) {
+                pres_fac = router_opts.initial_pres_fac;
+                pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */
+                
+
+
+        } 
+        else if (router_opts.do_inference && itry == 1) {
+        pres_fac = router_opts.initial_pres_fac;
+        pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */
+        // 
+        string inference_file = "../"+route_ctx.archname+"_first_"+route_ctx.circuitname+"_inference.csv";
+        fp = fopen(inference_file.c_str(), "r");
+        for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+        {
+            if ((read = getline(&line, &len, fp)) != -1) {
+            
+                route_ctx.rr_node_route_inf[inode].acc_cost = 1+strtod(line, &ptr);
+                
+            }
+            
+            myfile << to_string(inode)+","+to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
+
+        }
+        
+        
+        fclose(fp);
+        if (line)
+            free(line);
+        //  pres_fac *= router_opts.pres_fac_mult;
+        // pres_fac = min(pres_fac, static_cast<float>(HUGE_POSITIVE_FLOAT / 1e5));
+        // pathfinder_update_cost(pres_fac, router_opts.acc_fac);
+    }
+    else {
             pres_fac *= router_opts.pres_fac_mult;
 
             /* Avoid overflow for high iteration counts, even if acc_cost is big */
