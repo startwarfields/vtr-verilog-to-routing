@@ -59,8 +59,10 @@ int main(int argc, const char** argv) {
         /* Read options, architecture, and circuit netlist */
         vpr_init(argc, argv, &Options, &vpr_setup, &Arch);
         g_vpr_ctx.mutable_routing().circuitname= vpr_setup.FileNameOpts.CircuitName;
-        // g_vpr_ctx.mutable_routing().archname= "earch";
-            g_vpr_ctx.mutable_routing().archname= "titan";
+        // Get The Architecture Name Dynamically.
+        char *archname_file = strrchr((char *) vpr_setup.FileNameOpts.ArchFile.c_str(), '/');
+        char *token = strtok(((char *) (archname_file+1)), ".");
+        g_vpr_ctx.mutable_routing().archname= token;
 
         if (Options.show_version) {
             return SUCCESS_EXIT_CODE;
@@ -85,30 +87,51 @@ int main(int argc, const char** argv) {
         auto& device_ctx = g_vpr_ctx.device();
         auto& route_ctx = g_vpr_ctx.routing();
         std::ofstream myfile;
-        // Test. 
-        
-        myfile.open("../"+route_ctx.archname+"_last_"+vpr_setup.FileNameOpts.CircuitName+"_historycosts.csv");
-        myfile<< "Node_ID,History_Cost\n";
-        for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-        {
-            
-            myfile << to_string(inode)+","+to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
-
-        }
-        myfile.close();
-        myfile.open("../"+route_ctx.archname+"_last_"+vpr_setup.FileNameOpts.CircuitName+"_edgelist.csv");
-        myfile<< "src_node,sink_node\n";
-        for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-        {   
-            auto& node = device_ctx.rr_nodes[inode];
-            for( size_t iedge = 0; iedge < device_ctx.rr_nodes[inode].num_edges(); iedge++)
+        // This collects the routing graph including the final history cost
+        // * Change to collect into a combined CSV. 
+        if (Options.collect_data) {
+            string run_type;
+            if(Options.do_inference)
             {
-                myfile << to_string(inode)+","+to_string(node.edge_sink_node(iedge))+"\n";
+                run_type = "__reg__";
             }
-           
+            else
+            {
+                run_type = "__gnn__";
+            }
+            myfile.open("../"+route_ctx.archname+"_last_"+vpr_setup.FileNameOpts.CircuitName+"_historycosts.csv");
+            myfile<< "Node_ID,History_Cost\n";
+            for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+            {
+                
+                myfile << to_string(inode)+","+to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
+
+            }
+            myfile.close();
+            myfile.open("../"+route_ctx.archname+"_last_"+vpr_setup.FileNameOpts.CircuitName+"_edgelist.csv");
+            myfile<< "src_node,sink_node\n";
+            for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+            {   
+                auto& node = device_ctx.rr_nodes[inode];
+                for( size_t iedge = 0; iedge < device_ctx.rr_nodes[inode].num_edges(); iedge++)
+                {
+                    myfile << to_string(inode)+","+to_string(node.edge_sink_node(iedge))+"\n";
+                }
+            
+
+            }
+            myfile.close();
+            
+        }
+        if(Options.collect_route_iteration_metrics)
+        {
+        // Metric Data specifically outputs the Routing Iteration stuff. 
+        }
+        // Inferencing dumps the final routing cost as well for measurement purposes
+        if(Options.do_inference)
+        {
 
         }
-        myfile.close();
         /* free data structures */
         
         vpr_free_all(Arch, vpr_setup);

@@ -950,6 +950,7 @@ struct t_router_opts {
     std::string first_iteration_timing_report_file;
     bool strict_checks;
     bool do_inference;
+    bool collect_route_iteration_metrics;
 };
 
 struct t_analysis_opts {

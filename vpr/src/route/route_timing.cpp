@@ -399,6 +399,22 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
      * Subsequent iterations use the net delays from the previous iteration.
      */
     RouterStats router_stats;
+    // Should Also output to CSV
+    std::ofstream rim_file;
+    if(router_opts.collect_route_iteration_metrics)
+    {   
+        string inf;
+        if (router_opts.do_inference)
+        {
+            inf = "__gnn__";
+        }
+        else
+        {
+            inf = "__reg__";
+        }
+        rim_file.open("../"+route_ctx.archname+"__"+route_ctx.circuitname+inf+"route_metrics.csv");
+        rim_file<< "Iteration,Time,Pres Fac,BBs Updated,Heap Push,ReRouted Connections,ReRouted Nets,Overused RR Nodes,Wirelength,CPD (ns),sTNS (ns),sWNS (ns),hTNS (ns),hWNS(ns),Estimated Successful Iterations\n";
+    }
     print_route_status_header();
     timing_driven_route_structs route_structs;
     float prev_iter_cumm_time = 0;
@@ -413,7 +429,6 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
     char * line = NULL;
     size_t len = 0;
     ssize_t read;
-    bool gnn_load = false;
 
     for (itry = 1; itry <= router_opts.max_router_iterations; ++itry) {
         RouterStats router_iteration_stats;
@@ -500,7 +515,31 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
 
         //Output progress
         print_route_status(itry, iter_elapsed_time, pres_fac, num_net_bounding_boxes_updated, router_iteration_stats, overuse_info, wirelength_info, timing_info, est_success_iteration);
+        if(router_opts.collect_route_iteration_metrics)
+        {
 
+            rim_file << to_string(itry) << ","
+                     << to_string(iter_elapsed_time)<< ","
+                     << to_string(pres_fac) << ","
+                     << to_string(num_net_bounding_boxes_updated) << ","
+                    //  Iteration Stats
+                     << to_string(router_iteration_stats.heap_pushes) << ","
+                     << to_string(router_iteration_stats.nets_routed) << ","
+                     << to_string(router_iteration_stats.connections_routed) << ","
+                    //  Oversuse Info
+                     << to_string(overuse_info.overused_node_ratio()) << ","
+                    //  Wirelength Info
+                     << to_string(wirelength_info.used_wirelength_ratio()) << ","
+                    //  Timing Info
+                    //  I'm pretty sure this math is vulnerable to machine epsilon. (double is 1e8 epsilon) 
+                     << to_string((1e9 * timing_info->least_slack_critical_path().delay())) << ","
+                     << to_string((1e9 * timing_info->setup_total_negative_slack())) << ","
+                     << to_string((1e9 * timing_info->setup_worst_negative_slack())) << ","
+                     << to_string((1e9 * timing_info->hold_total_negative_slack())) << ","
+                     << to_string((1e9 * timing_info->hold_worst_negative_slack())) << ","
+
+                     << to_string((int) est_success_iteration) << "\n";
+        }
         prev_iter_cumm_time = iter_cumm_time;
 
         //Update graphics
@@ -509,38 +548,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         } else {
             update_screen(ScreenUpdatePriority::MINOR, "Routing...", ROUTING, timing_info);
         }
-        // * Output Combined pdf
-        // if (itry==1)
-        //     {   
-                
-        //         std::ofstream myfile;
-        //         auto& device_ctx = g_vpr_ctx.device();
-        //         // auto& route_ctx = g_vpr_ctx.mutable_routing();
-        //         myfile.open("../"+route_ctx.archname+"_first_"+route_ctx.circuitname+"_historycosts.csv");
-        //         myfile<< "Node_ID,History_Cost\n";
-        //         for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-        //         {
-                    
-        //             myfile << to_string(inode)+","+to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
-
-        //         }
-        //         myfile.close();
-        //         myfile.open("../"+route_ctx.archname+"_first_"+route_ctx.circuitname+"_edgelist.csv");
-        //         myfile<< "src_node,sink_node\n";
-        //         for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-        //         {   
-        //             auto& node = device_ctx.rr_nodes[inode];
-        //             for( size_t iedge = 0; iedge < device_ctx.rr_nodes[inode].num_edges(); iedge++)
-        //             {
-        //                 myfile << to_string(inode)+","+to_string(node.edge_sink_node(iedge))+"\n";
-        //             }
-                
-
-        //         }
-        //         myfile.close();
-                
-
-        //     }
+      
         if (router_opts.save_routing_per_iteration) {
             std::string filename = vtr::string_fmt("iteration_%03d.route", itry);
 
@@ -645,18 +653,21 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         }
 
         //Update pres_fac and resource costs
-        gnn_load = false;
-        if (itry == 1 && !gnn_load) {
+        
+        if (itry == 1 && !router_opts.do_inference) {
                 pres_fac = router_opts.initial_pres_fac;
                 pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */
                 
 
 
         } 
+        // ? Inference Happens here, but data collection should happen in main
         else if (router_opts.do_inference && itry == 1) {
+
+        // Update: Pause while inference is executed. 
         pres_fac = router_opts.initial_pres_fac;
         pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */
-        // 
+        // Open 
         string inference_file = "../"+route_ctx.archname+"_first_"+route_ctx.circuitname+"_inference.csv";
         fp = fopen(inference_file.c_str(), "r");
         for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
@@ -670,7 +681,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
             myfile << to_string(inode)+","+to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
 
         }
-        
+       
         
         fclose(fp);
         if (line)
