@@ -412,7 +412,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         {
             inf = "__reg__";
         }
-        rim_file.open("../"+route_ctx.archname+"__"+route_ctx.circuitname+inf+"route_metrics.csv");
+        rim_file.open("../route_metrics/"+route_ctx.archname+"__"+route_ctx.circuitname+inf+"route_metrics.csv");
         rim_file<< "Iteration,Time,Pres Fac,BBs Updated,Heap Push,ReRouted Connections,ReRouted Nets,Overused RR Nodes,Wirelength,CPD (ns),sTNS (ns),sWNS (ns),hTNS (ns),hWNS(ns),Estimated Successful Iterations\n";
     }
     print_route_status_header();

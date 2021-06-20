@@ -93,34 +93,55 @@ int main(int argc, const char** argv) {
             string run_type;
             if(Options.do_inference)
             {
-                run_type = "__reg__";
+                run_type = "__gnn__";
             }
             else
             {
-                run_type = "__gnn__";
+                run_type = "__reg__";
             }
-            myfile.open("../"+route_ctx.archname+"_last_"+vpr_setup.FileNameOpts.CircuitName+"_historycosts.csv");
-            myfile<< "Node_ID,History_Cost\n";
+            myfile.open("../graph_data/"+route_ctx.archname+"__"+vpr_setup.FileNameOpts.CircuitName+run_type+"graph_data.csv");
+            myfile<< "Node_ID,dest_edges,node_type,Capacity,Initial_Cost,History_Cost\n";
             for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-            {
-                
-                myfile << to_string(inode)+","+to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
+            {               
 
-            }
-            myfile.close();
-            myfile.open("../"+route_ctx.archname+"_last_"+vpr_setup.FileNameOpts.CircuitName+"_edgelist.csv");
-            myfile<< "src_node,sink_node\n";
-            for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-            {   
+                // ID
+                myfile << to_string(inode)+",";
+                
+                // Dest Edges
+                myfile << "\"[";
                 auto& node = device_ctx.rr_nodes[inode];
                 for( size_t iedge = 0; iedge < device_ctx.rr_nodes[inode].num_edges(); iedge++)
-                {
-                    myfile << to_string(inode)+","+to_string(node.edge_sink_node(iedge))+"\n";
+                {   
+                    if((iedge + 1) >= device_ctx.rr_nodes[inode].num_edges())
+                    {
+                        myfile << "\'"+to_string(node.edge_sink_node(iedge))+"\'";
+                    }
+                    else
+                    {
+                        myfile << "\'"+to_string(node.edge_sink_node(iedge))+"\', ";
+                    }
                 }
-            
-
+                myfile << "]\",";
+                // Node Type
+                myfile << node.type() << ",";
+                // Route Capacity
+                myfile<< node.capacity() << ",";
+                // Initial Cost
+                myfile << to_string(1) << ",";
+                // History Cost
+                myfile << to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
+               
             }
             myfile.close();
+            // myfile.open("../"+route_ctx.archname+"_last_"+vpr_setup.FileNameOpts.CircuitName+"_edgelist.csv");
+            // myfile<< "src_node,sink_node\n";
+            // for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+            // {   
+               
+            
+
+            // }
+            // myfile.close();
             
         }
         if(Options.collect_route_iteration_metrics)
