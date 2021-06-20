@@ -126,8 +126,11 @@ int main(int argc, const char** argv) {
             {
                 run_type = "__reg__";
             }
+
             myfile.open("../graph_data/"+route_ctx.archname+"__"+vpr_setup.FileNameOpts.CircuitName+run_type+"graph_data.csv");
-            myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
+            myfile<< "node_id,dest_edges,node_type,capacity,initial_cost,history_cost\n";
+
+            // myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
             for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
             {               
 
@@ -150,7 +153,7 @@ int main(int argc, const char** argv) {
                 }
                 myfile << "]\",";
                 // Node Type
-                myfile << node.type_string() << ",";
+                myfile << node.type() << ",";
                 // // Source Node
                 // myfile << node.get_source_node() << ",";
                 // // Sink Node
