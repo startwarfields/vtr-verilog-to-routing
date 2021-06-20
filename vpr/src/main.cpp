@@ -83,9 +83,36 @@ int main(int argc, const char** argv) {
                 timing_ctx.stats.num_full_setup_updates,
                 timing_ctx.stats.num_full_hold_updates,
                 timing_ctx.stats.num_full_setup_hold_updates);
+        
+        auto& place_ctx = g_vpr_ctx.placement();
+        auto& device_ctx =  g_vpr_ctx.mutable_device();
+        auto& cluster_ctx = g_vpr_ctx.clustering();
+        auto& route_ctx = g_vpr_ctx.mutable_routing();
+        auto& atom_ctx  = g_vpr_ctx.atom();
+        // atom_ctx.nlist
+        // for (auto net_id : cluster_ctx.clb_nlist.nets()) {  
+           
+        //             t_trace* tptr = route_ctx.trace[net_id].head;
+    
+        //             if(tptr !=nullptr)
+        //             {
+        //                 int source = route_ctx.trace[net_id].head->index;
+        //                 int sink = route_ctx.trace[net_id].tail->index;
+                        
+        //                 while (tptr != nullptr) {
+        //                     int inode = tptr->index;
+        //                     auto& node = device_ctx.rr_nodes[inode];
+        //                     node.set_source_node(source);
+        //                     node.set_sink_node(sink);
 
-        auto& device_ctx = g_vpr_ctx.device();
-        auto& route_ctx = g_vpr_ctx.routing();
+        //                     tptr = tptr->next;
+        //                 }         
+        //             }
+        //  }
+        // auto& device_ctx = g_vpr_ctx.device();
+        
+       
+        
         std::ofstream myfile;
         // This collects the routing graph including the final history cost
         // * Change to collect into a combined CSV. 
@@ -100,7 +127,7 @@ int main(int argc, const char** argv) {
                 run_type = "__reg__";
             }
             myfile.open("../graph_data/"+route_ctx.archname+"__"+vpr_setup.FileNameOpts.CircuitName+run_type+"graph_data.csv");
-            myfile<< "Node_ID,dest_edges,node_type,Capacity,Initial_Cost,History_Cost\n";
+            myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
             for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
             {               
 
@@ -123,7 +150,11 @@ int main(int argc, const char** argv) {
                 }
                 myfile << "]\",";
                 // Node Type
-                myfile << node.type() << ",";
+                myfile << node.type_string() << ",";
+                // // Source Node
+                // myfile << node.get_source_node() << ",";
+                // // Sink Node
+                // myfile << node.get_sink_node() << ",";
                 // Route Capacity
                 myfile<< node.capacity() << ",";
                 // Initial Cost

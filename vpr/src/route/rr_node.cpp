@@ -317,6 +317,14 @@ void t_rr_node::set_edge_switch(short iedge, short switch_index) {
     VTR_ASSERT(switch_index >= 0);
     edges_[iedge].switch_id = switch_index;
 }
+void t_rr_node::set_sink_node(int inode)
+{
+    sink_node = inode;
+}
+void t_rr_node::set_source_node(int inode)
+{
+    source_node = inode;
+}
 
 t_rr_rc_data::t_rr_rc_data(float Rval, float Cval) noexcept
     : R(Rval)

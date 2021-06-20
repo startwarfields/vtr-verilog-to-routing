@@ -80,6 +80,10 @@ class t_rr_node {
     edge_idx_range non_configurable_edges() const { return vtr::make_range(edge_idx_iterator(num_edges() - num_non_configurable_edges()), edge_idx_iterator(num_edges())); }
 
     short num_edges() const { return num_edges_; }
+
+    int get_sink_node() const {return sink_node;}
+    int get_source_node() const {return source_node;}
+
     short num_configurable_edges() const { return num_edges() - num_non_configurable_edges(); }
     short num_non_configurable_edges() const { return num_non_configurable_edges_; }
 
@@ -151,6 +155,8 @@ class t_rr_node {
     void set_track_num(short); //Same as set_ptc_num() by checks type() is consistent
     void set_class_num(short); //Same as set_ptc_num() by checks type() is consistent
 
+    void set_source_node(int); // Set the net source node for this node
+    void set_sink_node(int); // Set the net sink node for this node
     void set_cost_index(size_t);
     void set_rc_index(short);
 
@@ -169,6 +175,8 @@ class t_rr_node {
     //Note: we use a plain array and use small types for sizes to save space vs std::vector
     //      (using std::vector's nearly doubles the size of the class)
     std::unique_ptr<t_rr_edge[]> edges_ = nullptr;
+    int source_node = -1; // Source Node for the Netlist this node is in
+    int sink_node = -1; // Sink Node for the Netlist this node is in. 
     uint16_t num_edges_ = 0;
     uint16_t edges_capacity_ = 0;
     uint8_t num_non_configurable_edges_ = 0;
