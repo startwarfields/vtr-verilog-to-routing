@@ -1,5 +1,7 @@
-#define PY_SSIZE_T_CLEAN
-#include "Python.h"
+#include<stdio.h>       
+#include<unistd.h>          
+#include <cstdlib>
+#include <sys/wait.h>
 #include <cstdio>
 #include <ctime>
 #include <cmath>
@@ -667,21 +669,11 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         else if (router_opts.do_inference && itry == 1) {
 
         
-        // FILE *inference_file = fopen("../inference.py", "r");
-        // PyRun_SimpleFileEx(inference_file, "inference.py -i inference/", 1);
-        // Update: Pause while inference is executed. 
-        std::array<char, 128> buffer;
-        std::string result;
-        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen("/home/spicygremlin/anaconda3/envs/torch/bin/python /home/spicygremlin/Github/CS220/GNNVPR/training/inference.py -i inference/", "r"), pclose);
-        if (!pipe) {
-            VTR_LOG("shit is fucked!\n");
-        }
-        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-            result += buffer.data();
-        }
-        VTR_LOG("honkers\n");
-        VTR_LOG(result.c_str());
-       
+        //  Beware of Python GIL!!!! SPPOOOOOOOKY. 
+        // * Update to pass in arch & circuit arguments.
+        string command = "/mnt/e/benchmarks/Outputs/inf.sh";
+        system(command.c_str());
+     
         pres_fac = router_opts.initial_pres_fac;
         pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */
         // Open 
@@ -699,14 +691,15 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                 
             }
             
-            myfile << to_string(inode)+","+to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
+            // myfile << to_string(inode)+","+to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
 
         }
+        VTR_LOG("I get past inference");
        
         
         fclose(fp);
-        if (line)
-            free(line);
+        // if (line)
+            // free(line);
         //  pres_fac *= router_opts.pres_fac_mult;
         // pres_fac = min(pres_fac, static_cast<float>(HUGE_POSITIVE_FLOAT / 1e5));
         // pathfinder_update_cost(pres_fac, router_opts.acc_fac);
@@ -2835,6 +2828,7 @@ static bool early_reconvergence_exit_heuristic(const t_router_opts& router_opts,
 
     return false; //Don't give up
 }
+
 
 static void generate_route_timing_reports(const t_router_opts& router_opts,
                                           const t_analysis_opts& analysis_opts,
