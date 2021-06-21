@@ -1,3 +1,5 @@
+#define PY_SSIZE_T_CLEAN
+#include "Python.h"
 #include <cstdio>
 #include <ctime>
 #include <cmath>
@@ -664,17 +666,36 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         // ? Inference Happens here, but data collection should happen in main
         else if (router_opts.do_inference && itry == 1) {
 
+        
+        // FILE *inference_file = fopen("../inference.py", "r");
+        // PyRun_SimpleFileEx(inference_file, "inference.py -i inference/", 1);
         // Update: Pause while inference is executed. 
+        std::array<char, 128> buffer;
+        std::string result;
+        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen("/home/spicygremlin/anaconda3/envs/torch/bin/python /home/spicygremlin/Github/CS220/GNNVPR/training/inference.py -i inference/", "r"), pclose);
+        if (!pipe) {
+            VTR_LOG("shit is fucked!\n");
+        }
+        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+            result += buffer.data();
+        }
+        VTR_LOG("honkers\n");
+        VTR_LOG(result.c_str());
+       
         pres_fac = router_opts.initial_pres_fac;
         pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */
         // Open 
-        string inference_file = "../"+route_ctx.archname+"_first_"+route_ctx.circuitname+"_inference.csv";
-        fp = fopen(inference_file.c_str(), "r");
+        // Execute Python File
+
+
+        string inference_file_name = "../output.csv";
+        // string inference_file = "../output.csv"; // Don't do this. 
+        fp = fopen(inference_file_name.c_str(), "r");
         for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
         {
             if ((read = getline(&line, &len, fp)) != -1) {
             
-                route_ctx.rr_node_route_inf[inode].acc_cost = 1+strtod(line, &ptr);
+                route_ctx.rr_node_route_inf[inode].acc_cost = strtod(line, &ptr);
                 
             }
             
