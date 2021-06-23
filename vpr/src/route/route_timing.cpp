@@ -686,13 +686,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         
             
             // Output Kustom Inference File
-            if(router_opts.do_inference)
-            {
-            std::ofstream myfile;
-            string run_type = "__gnn__";
-            myfile.open("/inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data.csv");
-            myfile<< "node_id,dest_edges,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost,history_cost\n";
-            }
+            
             // myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
             for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
             {               
@@ -751,16 +745,25 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                 // Initial Cost
                 node.data +=  to_string(1) + ",";
                 // "Current" History Cost Useless but does the newline
-                if(router_opts.do_inference)
-                {
-                    node.data +=  to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
-                    myfile << node.data;
-                }
+                // if(router_opts.do_inference)
+                // {
+                //     myfile << node.data + to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n" ;
+                // }
                
                 
             }
             if(router_opts.do_inference)
             {
+               
+                std::ofstream myfile;
+                string run_type = "__gnn__";
+                myfile.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data.csv");
+                myfile<< "node_id,dest_edges,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost,history_cost\n";
+                for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+                {               
+                auto& node = device_ctx.rr_nodes[inode];
+                myfile << node.data + to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n" ;
+                }
                 myfile.close();
             }
         }
