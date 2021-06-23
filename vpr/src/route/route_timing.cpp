@@ -657,7 +657,114 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         }
 
         //Update pres_fac and resource costs
+        auto& device_ctx =  g_vpr_ctx.mutable_device();
+
+        if(itry == 1)
+        {
+
+             for (auto net_id : cluster_ctx.clb_nlist.nets()) {  
+            
+                        t_trace* tptr = route_ctx.trace[net_id].head;
         
+                        if(tptr !=nullptr)
+                        {
+                            int source = route_ctx.trace[net_id].head->index;
+                            int sink = route_ctx.trace[net_id].tail->index;
+                            
+                            while (tptr != nullptr) {
+                                int inode = tptr->index;
+                                auto& node = device_ctx.rr_nodes[inode];
+                                node.set_source_node(source);
+                                node.set_sink_node(sink);
+                                node.set_num_netlists(1);
+
+                                tptr = tptr->next;
+                            }         
+                        }
+            }
+       
+        
+            
+            // Output Kustom Inference File
+            if(router_opts.do_inference)
+            {
+            std::ofstream myfile;
+            string run_type = "__gnn__";
+            myfile.open("/inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data.csv");
+            myfile<< "node_id,dest_edges,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost,history_cost\n";
+            }
+            // myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
+            for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+            {               
+                auto& node = device_ctx.rr_nodes[inode];
+                // ID
+               node.data += to_string(inode)+",";
+                
+                // Dest Edges
+               node.data +=  "\"[";
+                
+                for( size_t iedge = 0; iedge < device_ctx.rr_nodes[inode].num_edges(); iedge++)
+                {   
+                    if((iedge + 1) >= device_ctx.rr_nodes[inode].num_edges())
+                    {
+                        node.data +=  "\'"+to_string(node.edge_sink_node(iedge))+"\'";
+                    }
+                    else
+                    {
+                        node.data +=  "\'"+to_string(node.edge_sink_node(iedge))+"\', ";
+                    }
+                }
+                 node.data += "]\",";
+                // Node Type
+                node.data +=  to_string(node.type()) + ",";
+
+                 node.data +=  to_string(node.get_num_netlists()) + ",";
+                // Source Node
+                if(node.get_source_node() == -1)
+                {
+                    
+                node.data +=  to_string(0)+ ",";
+                node.data +=  to_string(inode)+",";
+                // Sink Node
+                node.data +=  to_string(inode)+",";
+
+                }
+                else
+                {
+                    
+                node.data +=  to_string(1) + ",";
+                node.data +=  to_string(node.get_source_node())+",";
+                // Sink Node
+                node.data +=  to_string(node.get_sink_node())+",";
+
+                }
+                int overuse = route_ctx.rr_node_route_inf[inode].occ() - device_ctx.rr_nodes[inode].capacity();
+                if (overuse > 0) {
+                    node.data +=  to_string(1) + ",";
+                }
+                else
+                {
+                node.data +=  to_string(0) + ",";
+                }
+                // Route Capacity
+                node.data +=  to_string(node.capacity()) + ",";
+                // Initial Cost
+                node.data +=  to_string(1) + ",";
+                // "Current" History Cost Useless but does the newline
+                if(router_opts.do_inference)
+                {
+                    node.data +=  to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
+                    myfile << node.data;
+                }
+               
+                
+            }
+            if(router_opts.do_inference)
+            {
+                myfile.close();
+            }
+        }
+
         if (itry == 1 && !router_opts.do_inference) {
                 pres_fac = router_opts.initial_pres_fac;
                 pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */
@@ -666,8 +773,11 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
 
         } 
         // ? Inference Happens here, but data collection should happen in main
+       
         else if (router_opts.do_inference && itry == 1) {
-
+                
+                
+           
         
         //  Beware of Python GIL!!!! SPPOOOOOOOKY. 
         // * Update to pass in arch & circuit arguments.
@@ -680,7 +790,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         // Execute Python File
 
 
-        string inference_file_name = "../output.csv";
+        string inference_file_name = "prediction.csv";
         // string inference_file = "../output.csv"; // Don't do this. 
         fp = fopen(inference_file_name.c_str(), "r");
         for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)

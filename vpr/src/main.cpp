@@ -90,80 +90,46 @@ int main(int argc, const char** argv) {
         auto& route_ctx = g_vpr_ctx.mutable_routing();
         auto& atom_ctx  = g_vpr_ctx.atom();
         // atom_ctx.nlist
-        // for (auto net_id : cluster_ctx.clb_nlist.nets()) {  
+        for (auto net_id : cluster_ctx.clb_nlist.nets()) {  
            
-        //             t_trace* tptr = route_ctx.trace[net_id].head;
+                    t_trace* tptr = route_ctx.trace[net_id].head;
     
-        //             if(tptr !=nullptr)
-        //             {
-        //                 int source = route_ctx.trace[net_id].head->index;
-        //                 int sink = route_ctx.trace[net_id].tail->index;
+                    if(tptr !=nullptr)
+                    {
+                        int source = route_ctx.trace[net_id].head->index;
+                        int sink = route_ctx.trace[net_id].tail->index;
                         
-        //                 while (tptr != nullptr) {
-        //                     int inode = tptr->index;
-        //                     auto& node = device_ctx.rr_nodes[inode];
-        //                     node.set_source_node(source);
-        //                     node.set_sink_node(sink);
+                        while (tptr != nullptr) {
+                            int inode = tptr->index;
+                            auto& node = device_ctx.rr_nodes[inode];
+                            node.set_source_node(source);
+                            node.set_sink_node(sink);
+                            node.set_num_netlists(1);
 
-        //                     tptr = tptr->next;
-        //                 }         
-        //             }
-        //  }
-        // auto& device_ctx = g_vpr_ctx.device();
+                            tptr = tptr->next;
+                        }         
+                    }
+         }
         
        
         
         std::ofstream myfile;
         // This collects the routing graph including the final history cost
         // * Change to collect into a combined CSV. 
-        if (Options.collect_data) {
-            string run_type;
-            if(Options.do_inference)
-            {
-                run_type = "__gnn__";
-            }
-            else
-            {
-                run_type = "__reg__";
-            }
+        if (Options.collect_data && !Options.do_inference) {
+            string run_type = "__reg__";;
+           
 
             myfile.open("../graph_data/"+route_ctx.archname+"__"+vpr_setup.FileNameOpts.CircuitName+run_type+"graph_data.csv");
-            myfile<< "node_id,dest_edges,node_type,capacity,initial_cost,history_cost\n";
+            myfile<< "node_id,dest_edges,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost,history_cost\n";
 
             // myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
             for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
             {               
-
-                // ID
-                myfile << to_string(inode)+",";
-                
-                // Dest Edges
-                myfile << "\"[";
                 auto& node = device_ctx.rr_nodes[inode];
-                for( size_t iedge = 0; iedge < device_ctx.rr_nodes[inode].num_edges(); iedge++)
-                {   
-                    if((iedge + 1) >= device_ctx.rr_nodes[inode].num_edges())
-                    {
-                        myfile << "\'"+to_string(node.edge_sink_node(iedge))+"\'";
-                    }
-                    else
-                    {
-                        myfile << "\'"+to_string(node.edge_sink_node(iedge))+"\', ";
-                    }
-                }
-                myfile << "]\",";
-                // Node Type
-                myfile << node.type() << ",";
-                // // Source Node
-                // myfile << node.get_source_node() << ",";
-                // // Sink Node
-                // myfile << node.get_sink_node() << ",";
-                // Route Capacity
-                myfile<< node.capacity() << ",";
-                // Initial Cost
-                myfile << to_string(1) << ",";
-                // History Cost
-                myfile << to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
+                
+                node.data += to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
+                myfile << node.data;
                
             }
             myfile.close();

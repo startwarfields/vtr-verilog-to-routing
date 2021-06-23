@@ -325,7 +325,14 @@ void t_rr_node::set_source_node(int inode)
 {
     source_node = inode;
 }
-
+void t_rr_node::set_num_netlists(int num_netlists_i)
+{
+    num_netlists += num_netlists_i;
+}
+void t_rr_node::set_overused(int overused_i)
+{
+    overused = overused_i;
+}
 t_rr_rc_data::t_rr_rc_data(float Rval, float Cval) noexcept
     : R(Rval)
     , C(Cval) {}
