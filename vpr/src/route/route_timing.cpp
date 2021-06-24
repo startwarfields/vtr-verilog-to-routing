@@ -763,6 +763,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                 {               
                 auto& node = device_ctx.rr_nodes[inode];
                 myfile << node.data + to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n" ;
+                
                 }
                 myfile.close();
             }
@@ -798,10 +799,16 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         fp = fopen(inference_file_name.c_str(), "r");
         for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
         {
-            if ((read = getline(&line, &len, fp)) != -1) {
+            auto& node = device_ctx.rr_nodes[inode];
             
-                route_ctx.rr_node_route_inf[inode].acc_cost = strtod(line, &ptr);
-                
+                if ((read = getline(&line, &len, fp)) != -1) {
+
+                //    int overuse = route_ctx.rr_node_route_inf[inode].occ() - device_ctx.rr_nodes[inode].capacity();
+                //    if (overuse > 0) {
+                        route_ctx.rr_node_route_inf[inode].acc_cost = strtod(line, &ptr);
+                        // route_ctx.rr_node_route_inf[inode].acc_cost = 4;
+                        
+                    // }
             }
             
             // myfile << to_string(inode)+","+to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
