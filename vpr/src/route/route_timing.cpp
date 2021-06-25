@@ -694,21 +694,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                 // ID
                node.data += to_string(inode)+",";
                 
-                // Dest Edges
-               node.data +=  "\"[";
-                
-                for( size_t iedge = 0; iedge < device_ctx.rr_nodes[inode].num_edges(); iedge++)
-                {   
-                    if((iedge + 1) >= device_ctx.rr_nodes[inode].num_edges())
-                    {
-                        node.data +=  "\'"+to_string(node.edge_sink_node(iedge))+"\'";
-                    }
-                    else
-                    {
-                        node.data +=  "\'"+to_string(node.edge_sink_node(iedge))+"\', ";
-                    }
-                }
-                 node.data += "]\",";
+               
                 // Node Type
                 node.data +=  to_string(node.type()) + ",";
 
@@ -755,10 +741,13 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
             if(router_opts.do_inference)
             {
                
+                float inf_time_t1 = iteration_timer.elapsed_sec();
+
+               
                 std::ofstream myfile;
                 string run_type = "__gnn__";
-                myfile.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data.csv");
-                myfile<< "node_id,dest_edges,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost,history_cost\n";
+                myfile.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-nodes.csv");
+                myfile<< "node_id,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost,history_cost\n";
                 for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
                 {               
                 auto& node = device_ctx.rr_nodes[inode];
@@ -766,6 +755,24 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                 
                 }
                 myfile.close();
+                myfile.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-edges.csv");
+                myfile<< "src_node,sink_node\n";
+                for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+                {               
+                    auto& node = device_ctx.rr_nodes[inode];
+                    for(size_t iedge = 0; iedge < device_ctx.rr_nodes[inode].num_edges(); iedge++)
+                        {   
+                            myfile << to_string(inode) << "," << to_string(node.edge_sink_node(iedge)) << "\n";
+                        }
+                
+                }
+                 myfile.close();
+                
+                float inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
+                VTR_LOG("Saving CSV File took %6.1f\n", inf_time_t2);
+
+
+                
             }
         }
 
@@ -781,19 +788,22 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         else if (router_opts.do_inference && itry == 1) {
                 
                 
-           
+        float inf_time_t1 = iteration_timer.elapsed_sec();
         
         //  Beware of Python GIL!!!! SPPOOOOOOOKY. 
         // * Update to pass in arch & circuit arguments.
-        string command = "/mnt/e/benchmarks/Outputs/inf.sh";
+        string command = "/mnt/e/benchmarks/Outputs/inf.sh > pyoutput.txt";
         system(command.c_str());
+
+        float inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
+        VTR_LOG("Inferencing took %6.1f\n", inf_time_t2);
      
         pres_fac = router_opts.initial_pres_fac;
         pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */
         // Open 
         // Execute Python File
 
-
+        inf_time_t1 = iteration_timer.elapsed_sec();
         string inference_file_name = "prediction.csv";
         // string inference_file = "../output.csv"; // Don't do this. 
         fp = fopen(inference_file_name.c_str(), "r");
@@ -813,16 +823,15 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
             
             // myfile << to_string(inode)+","+to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
 
-        }
-        VTR_LOG("I get past inference");
-       
-        
+        }        
         fclose(fp);
         // if (line)
             // free(line);
         //  pres_fac *= router_opts.pres_fac_mult;
         // pres_fac = min(pres_fac, static_cast<float>(HUGE_POSITIVE_FLOAT / 1e5));
         // pathfinder_update_cost(pres_fac, router_opts.acc_fac);
+        inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
+        VTR_LOG("Loading Prediction took %6.1f\n", inf_time_t2);
     }
     else {
             pres_fac *= router_opts.pres_fac_mult;
@@ -2602,6 +2611,7 @@ static void print_route_status(int itry, double elapsed_sec, float pres_fac, int
     VTR_LOG("%4d", itry);
 
     //Elapsed Time
+    
     VTR_LOG(" %6.1f", elapsed_sec);
 
     //pres_fac

@@ -120,9 +120,8 @@ int main(int argc, const char** argv) {
             string run_type = "__reg__";;
            
 
-            myfile.open("../graph_data/"+route_ctx.archname+"__"+vpr_setup.FileNameOpts.CircuitName+run_type+"graph_data.csv");
-            myfile<< "node_id,dest_edges,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost,history_cost\n";
-
+            myfile.open("../graph_data/"+route_ctx.archname+"__"+vpr_setup.FileNameOpts.CircuitName+run_type+"graph_data-nodes.csv");
+            myfile<< "node_id,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost,history_cost\n";
             // myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
             for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
             {               
@@ -133,6 +132,18 @@ int main(int argc, const char** argv) {
                
             }
             myfile.close();
+            myfile.open("../graph_data/"+route_ctx.archname+"__"+vpr_setup.FileNameOpts.CircuitName+run_type+"graph_data-edges.csv");
+            myfile<< "src_node,sink_node\n";
+                for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+                {               
+                    auto& node = device_ctx.rr_nodes[inode];
+                    for(size_t iedge = 0; iedge < device_ctx.rr_nodes[inode].num_edges(); iedge++)
+                        {   
+                            myfile << to_string(inode) << "," << to_string(node.edge_sink_node(iedge)) << "\n";
+                        }
+                
+                }
+                 myfile.close();
             // myfile.open("../"+route_ctx.archname+"_last_"+vpr_setup.FileNameOpts.CircuitName+"_edgelist.csv");
             // myfile<< "src_node,sink_node\n";
             // for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
