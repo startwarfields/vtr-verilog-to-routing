@@ -763,7 +763,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                
                 std::ofstream myfile;
                 string run_type = "__gnn__";
-                myfile.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+to_string(itry-1)+"__graph_data-nodes.csv");
+                myfile.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+to_string(itry)+"__graph_data-nodes.csv");
                 myfile<< "node_id,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost,history_cost\n";
                 for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
                 {               
@@ -774,7 +774,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                 myfile.close();
 
                 std::ofstream myfile2;
-                myfile2.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+to_string(itry-1)+"graph_data-edges.csv");
+                myfile2.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+to_string(itry)+"__graph_data-edges.csv");
                 myfile2<< "src_node,sink_node\n";
                 for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
                 {               
