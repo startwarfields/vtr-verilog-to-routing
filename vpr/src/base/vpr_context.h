@@ -115,7 +115,7 @@ struct DeviceContext : public Context {
      *********************************************************************/
     /* x and y dimensions of the FPGA itself */
     DeviceGrid grid; /* FPGA complex block grid [0 .. grid.width()-1][0 .. grid.height()-1] */
-
+    int itry=0;
     /* Special pointers to identify special blocks on an FPGA: I/Os, unused, and default */
     std::set<t_type_ptr> input_types;
     std::set<t_type_ptr> output_types;
