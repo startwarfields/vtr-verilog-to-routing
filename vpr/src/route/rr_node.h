@@ -72,7 +72,7 @@ class t_rr_node {
     typedef vtr::Range<edge_idx_iterator> edge_idx_range;
 
   public: //Accessors
-    std::string data[32];
+    // std::string data[32];
     t_rr_type type() const { return type_; }
     const char* type_string() const; /* Retrieve type as a string */
 

@@ -115,21 +115,21 @@ int main(int argc, const char** argv) {
         
      
         // This collects the routing graph including the final history cost
-        // * Change to collect into a combined CSV. 
-        for(int i = 0; i < (device_ctx.itry); i++ ) {
+        // * Only outputs the final history cost as 
+       
         if (Options.collect_data && !Options.do_inference) {
             string run_type = "__reg__";;
             std::ofstream myfile;
 
-            myfile.open("../graph_data/"+route_ctx.archname+"__"+vpr_setup.FileNameOpts.CircuitName+run_type+to_string(i+1)+"__graph_data-nodes.csv");
-            myfile<< "node_id,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost,history_cost\n";
+            myfile.open("../../graph_data/"+route_ctx.archname+"__"+vpr_setup.FileNameOpts.CircuitName+run_type+"graph_data-hcost.csv");
+            myfile<< "history_cost\n";
             // myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
             for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
             {               
                 auto& node = device_ctx.rr_nodes[inode];
                 // (We'll ju)
-                node.data[i] += to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
-                myfile << node.data[i];
+                myfile << to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
+                
                
             }
             myfile.close();
@@ -154,7 +154,7 @@ int main(int argc, const char** argv) {
         {
 
         }
-        }
+        
         /* free data structures */
         
         vpr_free_all(Arch, vpr_setup);

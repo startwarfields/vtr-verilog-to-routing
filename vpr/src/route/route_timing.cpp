@@ -416,7 +416,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         {
             inf = "__reg__";
         }
-        rim_file.open("../route_metrics/"+route_ctx.archname+"__"+route_ctx.circuitname+inf+"route_metrics.csv");
+        rim_file.open("../../route_metrics/"+route_ctx.archname+"__"+route_ctx.circuitname+inf+"route_metrics.csv");
         rim_file<< "Iteration,Time,Pres Fac,BBs Updated,Heap Push,ReRouted Connections,ReRouted Nets,Overused RR Nodes,Wirelength,CPD (ns),sTNS (ns),sWNS (ns),hTNS (ns),hWNS(ns),Estimated Successful Iterations\n";
     }
     print_route_status_header();
@@ -684,63 +684,60 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         
             
             // Output Kustom Inference File
-            device_ctx.itry++;
-            // myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
-            for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-            {               
-                auto& node = device_ctx.rr_nodes[inode];
-                // ID
-                node.data[itry-1] = "";
-               node.data[itry-1] += to_string(inode)+",";
-                
-               
-                // Node Type
-                node.data[itry-1] +=  to_string(node.type()) + ",";
-
-                 node.data[itry-1] +=  to_string(node.get_num_netlists()) + ",";
-                // Source Node
-                if(node.get_source_node() == -1)
-                {
-                    
-                node.data[itry-1] +=  to_string(0)+ ",";
-                node.data[itry-1] +=  to_string(inode)+",";
-                // Sink Node
-                node.data[itry-1] +=  to_string(inode)+",";
-
-                }
-                else
-                {
-                    
-                node.data[itry-1] +=  to_string(1) + ",";
-                node.data[itry-1] +=  to_string(node.get_source_node())+",";
-                // Sink Node
-                node.data[itry-1] +=  to_string(node.get_sink_node())+",";
-
-                }
-                int overuse = route_ctx.rr_node_route_inf[inode].occ() - device_ctx.rr_nodes[inode].capacity();
-                if (overuse > 0) {
-                    node.data[itry-1] +=  to_string(1) + ",";
-                }
-                else
-                {
-                node.data[itry-1] +=  to_string(0) + ",";
-                }
-                // Route Capacity
-                node.data[itry-1] +=  to_string(node.capacity()) + ",";
-                // Initial Cost
-                node.data[itry-1] +=  to_string(1) + ",";
-                // "Current" History Cost Useless but does the newline
-                // if(router_opts.do_inference)
-                // {
-                //     myfile << node.data + to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n" ;
-                // }
-               
-                
-            }
+           
             if(!router_opts.do_inference)
             {
+                string run_type = "__reg__";
+                device_ctx.itry++;
                 std::ofstream myfile2;
-                myfile2.open("../graph_data/"+route_ctx.archname+"__"+route_ctx.circuitname+"__reg__"+to_string(itry)+"__graph_data-edges.csv");
+                myfile2.open("../../graph_data/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-nodes__"+to_string(itry)+"__.csv");
+                myfile2 << "node_id,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost\n";
+
+                // myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
+                string node_data = "";
+                for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+                {               
+                    auto& node = device_ctx.rr_nodes[inode];
+                    // ID
+                    node_data = "";
+                    node_data += to_string(inode)+",";
+    
+                    // Node Type
+                    node_data +=  to_string(node.type()) + ",";
+
+                    node_data +=  to_string(node.get_num_netlists()) + ",";
+                    // Source Node
+                    if(node.get_source_node() == -1) {
+                        
+                    node_data +=  to_string(0)+ ",";
+                    node_data +=  to_string(inode)+",";
+                    // Sink Node
+                    node_data +=  to_string(inode)+",";
+                    }
+                    else {
+                    node_data +=  to_string(1) + ",";
+                    node_data +=  to_string(node.get_source_node())+",";
+                    // Sink Node
+                    node_data +=  to_string(node.get_sink_node())+",";
+
+                    }
+                    int overuse = route_ctx.rr_node_route_inf[inode].occ() - device_ctx.rr_nodes[inode].capacity();
+                    if (overuse > 0) {
+                        node_data +=  to_string(1) + ",";
+                    }
+                    else {
+                    node_data +=  to_string(0) + ",";
+                    }
+                    // Route Capacity
+                    node_data +=  to_string(node.capacity()) + ",";
+                    // Initial Cost
+                    node_data +=  to_string(1) + "\n";
+                    myfile2 << node_data;
+                }
+            
+                myfile2.close();
+
+                myfile2.open("../../graph_data/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-edges__"+to_string(itry)+"__.csv");
                 myfile2<< "src_node,sink_node\n";
                     for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
                     {               
@@ -757,24 +754,70 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
 
             if(router_opts.do_inference && itry == 1)
             {
-                
+                string run_type = "__gnn__";
                 float inf_time_t1 = iteration_timer.elapsed_sec();
 
-               
+                device_ctx.itry++;
+                std::ofstream myfile2;
+                myfile2.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-nodes__"+to_string(itry)+"__.csv");
+                myfile2<< "node_id,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost\n";
+
+                // myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
+                string node_data = "";
+                for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+                {               
+                    auto& node = device_ctx.rr_nodes[inode];
+                    // ID
+                    node_data = "";
+                    node_data += to_string(inode)+",";
+    
+                    // Node Type
+                    node_data +=  to_string(node.type()) + ",";
+
+                    node_data +=  to_string(node.get_num_netlists()) + ",";
+                    // Source Node
+                    if(node.get_source_node() == -1) {
+                        
+                    node_data +=  to_string(0)+ ",";
+                    node_data +=  to_string(inode)+",";
+                    // Sink Node
+                    node_data +=  to_string(inode)+",";
+                    }
+                    else {
+                    node_data +=  to_string(1) + ",";
+                    node_data +=  to_string(node.get_source_node())+",";
+                    // Sink Node
+                    node_data +=  to_string(node.get_sink_node())+",";
+
+                    }
+                    int overuse = route_ctx.rr_node_route_inf[inode].occ() - device_ctx.rr_nodes[inode].capacity();
+                    if (overuse > 0) {
+                        node_data +=  to_string(1) + ",";
+                    }
+                    else {
+                    node_data +=  to_string(0) + ",";
+                    }
+                    // Route Capacity
+                    node_data +=  to_string(node.capacity()) + ",";
+                    // Initial Cost
+                    node_data +=  to_string(1) + "\n";
+                    myfile2 << node_data;
+                }
+                 myfile2.close();
+                // History Cost File 
                 std::ofstream myfile;
-                string run_type = "__gnn__";
-                myfile.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+to_string(itry)+"__graph_data-nodes.csv");
-                myfile<< "node_id,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost,history_cost\n";
+               
+                myfile.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-hcost.csv");
+                myfile<< "history_cost\n";  
                 for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
                 {               
                 auto& node = device_ctx.rr_nodes[inode];
-                myfile << node.data[itry-1] + to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n" ;
+                myfile << to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n" ;
                 
                 }
                 myfile.close();
-
-                std::ofstream myfile2;
-                myfile2.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+to_string(itry)+"__graph_data-edges.csv");
+                // Edges
+                myfile2.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+route_ctx.circuitname+run_type+"graph_data-edges__"+to_string(itry)+"__.csv");
                 myfile2<< "src_node,sink_node\n";
                 for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
                 {               
