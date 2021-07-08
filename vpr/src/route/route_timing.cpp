@@ -817,7 +817,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                 }
                 myfile.close();
                 // Edges
-                myfile2.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+route_ctx.circuitname+run_type+"graph_data-edges__"+to_string(itry)+"__.csv");
+                myfile2.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-edges__"+to_string(itry)+"__.csv");
                 myfile2<< "src_node,sink_node\n";
                 for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
                 {               
