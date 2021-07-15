@@ -951,6 +951,8 @@ struct t_router_opts {
     bool strict_checks;
     bool do_inference;
     bool collect_route_iteration_metrics;
+    bool intake_ground_truth;
+    bool outtake_ground_truth;
 };
 
 struct t_analysis_opts {

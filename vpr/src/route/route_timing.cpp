@@ -408,7 +408,11 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
     if(router_opts.collect_route_iteration_metrics)
     {   
         string inf;
-        if (router_opts.do_inference)
+        if (router_opts.intake_ground_truth)
+        {
+            inf = "__gnd__";
+        }
+        else if (router_opts.do_inference)
         {
             inf = "__gnn__";
         }
@@ -683,11 +687,12 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
        
         
             
-            // Output Kustom Inference File
-           
-            if(!router_opts.do_inference)
+            // This output Graph Data in the graph data directory for training.
+            if(!router_opts.intake_ground_truth && !router_opts.do_inference && itry==1)
             {
+                // Refactor to be a cmd-line and not hardcoded :^)
                 string run_type = "__reg__";
+
                 device_ctx.itry++;
                 std::ofstream myfile2;
                 myfile2.open("../../graph_data/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-nodes__"+to_string(itry)+"__.csv");
@@ -751,7 +756,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                 myfile2.close();
             }
 
-
+            // This code outputs the graph data to a local directory for inference.
             if(router_opts.do_inference && itry == 1)
             {
                 string run_type = "__gnn__";
@@ -839,21 +844,20 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
             
         
 
-        if (itry == 1 && !router_opts.do_inference) {
+        if (itry == 1 && !router_opts.do_inference && !router_opts.intake_ground_truth) {
                 pres_fac = router_opts.initial_pres_fac;
                 pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */
                 
 
 
         } 
-        // ? Inference Happens here, but data collection should happen in main
-       
+
+        // ? Inference Happens here, but data collection should happen in main loop.
         else if (router_opts.do_inference && itry == 1) {
                 
                 
         float inf_time_t1 = iteration_timer.elapsed_sec();
         
-        //  Beware of Python GIL!!!! SPPOOOOOOOKY. 
         // * Update to pass in arch & circuit arguments.
         string command = "/mnt/e/benchmarks/Outputs/inf.sh > pyoutput.txt";
         system(command.c_str());
@@ -862,40 +866,61 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         VTR_LOG("Inferencing took %6.1f\n", inf_time_t2);
      
         pres_fac = router_opts.initial_pres_fac;
-        pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */
-        // Open 
-        // Execute Python File
+        pres_fac *= router_opts.pres_fac_mult;
 
+        pres_fac = min(pres_fac, static_cast<float>(HUGE_POSITIVE_FLOAT / 1e5));
+        
+        // The AI Suggested this here: I'm worried that this will cause the router to predict badly,
+        // but I'm not sure how to fix that.
+        /* Acc_fac=0 for first iter. */
         inf_time_t1 = iteration_timer.elapsed_sec();
         string inference_file_name = "prediction.csv";
-        // string inference_file = "../output.csv"; // Don't do this. 
         fp = fopen(inference_file_name.c_str(), "r");
         for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
         {
             auto& node = device_ctx.rr_nodes[inode];
-            
-                if ((read = getline(&line, &len, fp)) != -1) {
+            if ((read = getline(&line, &len, fp)) != -1) {
 
-                //    int overuse = route_ctx.rr_node_route_inf[inode].occ() - device_ctx.rr_nodes[inode].capacity();
-                //    if (overuse > 0) {
                         route_ctx.rr_node_route_inf[inode].acc_cost = strtod(line, &ptr);
-                        // route_ctx.rr_node_route_inf[inode].acc_cost = 4;
-                        
-                    // }
+                     
             }
             
-            // myfile << to_string(inode)+","+to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
-
         }        
         fclose(fp);
-        // if (line)
-            // free(line);
-        //  pres_fac *= router_opts.pres_fac_mult;
-        // pres_fac = min(pres_fac, static_cast<float>(HUGE_POSITIVE_FLOAT / 1e5));
-        // pathfinder_update_cost(pres_fac, router_opts.acc_fac);
+      
         inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
         VTR_LOG("Loading Prediction took %6.1f\n", inf_time_t2);
-    }
+        pathfinder_update_cost(pres_fac, router_opts.acc_fac);
+        }
+        else if(router_opts.intake_ground_truth && itry == 1)
+        {
+            float inf_time_t1 = iteration_timer.elapsed_sec();
+            pres_fac = router_opts.initial_pres_fac;
+            pres_fac *= router_opts.pres_fac_mult;
+
+            /* Avoid overflow for high iteration counts, even if acc_cost is big */
+            pres_fac = min(pres_fac, static_cast<float>(HUGE_POSITIVE_FLOAT / 1e5));
+
+            // The AI Suggested this here: I'm worried that this will cause the router to predict badly,
+            // but I'm not sure how to fix that.
+            // pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */
+            string inference_file_name = "prediction-ground.csv";
+            fp = fopen(inference_file_name.c_str(), "r");
+            for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+            {
+                auto& node = device_ctx.rr_nodes[inode];
+                if ((read = getline(&line, &len, fp)) != -1) {
+
+                    route_ctx.rr_node_route_inf[inode].acc_cost = strtod(line, &ptr);
+                        
+                }
+                
+            }        
+            fclose(fp);
+            float inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
+            VTR_LOG("Loading Prediction-Ground took %6.1f\n", inf_time_t2);
+            pathfinder_update_cost(pres_fac, router_opts.acc_fac);
+        }
     else {
             pres_fac *= router_opts.pres_fac_mult;
 

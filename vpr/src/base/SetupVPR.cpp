@@ -349,7 +349,8 @@ static void SetupRouterOpts(const t_options& Options, t_router_opts* RouterOpts)
     RouterOpts->first_iteration_timing_report_file = Options.router_first_iteration_timing_report_file;
     RouterOpts->do_inference = Options.do_inference;
     RouterOpts->collect_route_iteration_metrics = Options.collect_route_iteration_metrics;
-    
+    RouterOpts->intake_ground_truth = Options.intake_ground_truth;
+    RouterOpts->outtake_ground_truth = Options.outtake_ground_truth;
     RouterOpts->strict_checks = Options.strict_checks;
 }
 

@@ -1435,6 +1435,14 @@ static argparse::ArgumentParser create_arg_parser(std::string prog_name, t_optio
         .help("Routing Costs will be input from GNN Inference")
         .default_value("on")
         .show_in(argparse::ShowIn::HELP_ONLY);
+    route_grp.add_argument<bool, ParseOnOff>(args.outtake_ground_truth, "--outtake_ground_truth")
+        .help("Outputs Final History Costs (facc_cost) as a prediction-goal.csv")
+        .default_value("off")
+        .show_in(argparse::ShowIn::HELP_ONLY);
+    route_grp.add_argument<bool, ParseOnOff>(args.intake_ground_truth, "--intake_ground_truth")
+        .help("Inputs Final History Costs (facc_cost) from prediction-goal.csv")
+        .default_value("off")
+        .show_in(argparse::ShowIn::HELP_ONLY);
     auto& route_timing_grp = parser.add_argument_group("timing-driven routing options");
 
     route_timing_grp.add_argument(args.astar_fac, "--astar_fac")

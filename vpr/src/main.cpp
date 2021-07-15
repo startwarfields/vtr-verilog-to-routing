@@ -118,7 +118,9 @@ int main(int argc, const char** argv) {
         // * Only outputs the final history cost as 
        
         if (Options.collect_data && !Options.do_inference) {
-            string run_type = "__reg__";;
+            if (Options.outtake_ground_truth) {
+
+            string run_type = "__reg__";
             std::ofstream myfile;
 
             myfile.open("../../graph_data/"+route_ctx.archname+"__"+vpr_setup.FileNameOpts.CircuitName+run_type+"graph_data-hcost.csv");
@@ -134,17 +136,23 @@ int main(int argc, const char** argv) {
             }
             myfile.close();
           
-            // myfile.open("../"+route_ctx.archname+"_last_"+vpr_setup.FileNameOpts.CircuitName+"_edgelist.csv");
-            // myfile<< "src_node,sink_node\n";
-            // for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-            // {   
-               
-            
-
-            // }
-            // myfile.close();
             
         }
+        }
+        if (Options.outtake_ground_truth) {
+
+            std::ofstream myfile;
+            myfile.open("prediction-ground.csv");
+            for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+            {               
+                auto& node = device_ctx.rr_nodes[inode];
+                myfile << to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
+                
+               
+            }
+            myfile.close();
+        }
+
         if(Options.collect_route_iteration_metrics)
         {
         // Metric Data specifically outputs the Routing Iteration stuff. 
