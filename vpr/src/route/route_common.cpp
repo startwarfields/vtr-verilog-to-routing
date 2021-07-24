@@ -750,6 +750,8 @@ static float get_single_rr_cong_cost(int inode) {
     float cost = device_ctx.rr_indexed_data[cost_index].base_cost
                  * route_ctx.rr_node_route_inf[inode].acc_cost
                  * route_ctx.rr_node_route_inf[inode].pres_cost;
+                  
+    
     return cost;
 }
 

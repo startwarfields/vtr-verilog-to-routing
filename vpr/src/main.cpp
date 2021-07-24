@@ -90,6 +90,7 @@ int main(int argc, const char** argv) {
         auto& route_ctx = g_vpr_ctx.mutable_routing();
         auto& atom_ctx  = g_vpr_ctx.atom();
         // atom_ctx.nlist
+       
         for (auto net_id : cluster_ctx.clb_nlist.nets()) {  
            
                     t_trace* tptr = route_ctx.trace[net_id].head;
@@ -118,12 +119,14 @@ int main(int argc, const char** argv) {
         // * Only outputs the final history cost as 
        
         if (Options.collect_data && !Options.do_inference) {
-            if (Options.outtake_ground_truth) {
+            if (!Options.outtake_ground_truth) {
 
             string run_type = "__reg__";
+            string file_name = "../../graph_data/"+route_ctx.archname+"__"+vpr_setup.FileNameOpts.CircuitName+run_type;
             std::ofstream myfile;
+           
 
-            myfile.open("../../graph_data/"+route_ctx.archname+"__"+vpr_setup.FileNameOpts.CircuitName+run_type+"graph_data-hcost.csv");
+            myfile.open(file_name+"graph_data-hcost.csv");
             myfile<< "history_cost\n";
             // myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
             for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
@@ -135,24 +138,40 @@ int main(int argc, const char** argv) {
                
             }
             myfile.close();
-          
+            std::ofstream myfile2;
+            myfile2.open(file_name+"graph_data-edges.csv");
+                myfile2<< "src_node,sink_node\n";
+                for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+                {               
+                    auto& node = device_ctx.rr_nodes[inode];
+                    for(size_t iedge = 0; iedge < device_ctx.rr_nodes[inode].num_edges(); iedge++)
+                        {   
+                            myfile2 << to_string(inode) << "," << to_string(node.edge_sink_node(iedge)) << "\n";
+                        }
+                
+                }
+            myfile2.close();
+            std::ofstream mynetfile;
+            auto sorted_nets = std::vector<ClusterNetId>(cluster_ctx.clb_nlist.nets().begin(), cluster_ctx.clb_nlist.nets().end());
+            struct more_sinks_than {
+                inline bool operator()(const ClusterNetId net_index1, const ClusterNetId net_index2) {
+                    auto& cluster_ctx = g_vpr_ctx.clustering();
+                    return cluster_ctx.clb_nlist.net_sinks(net_index1).size() > cluster_ctx.clb_nlist.net_sinks(net_index2).size();
+                }
+            };
+            std::sort(sorted_nets.begin(), sorted_nets.end(), more_sinks_than());
+            mynetfile.open(file_name+"graph_data-netorder.csv");            
+            for (auto net_id : sorted_nets) {
+                if (!cluster_ctx.clb_nlist.net_is_ignored(net_id)) {
+                     mynetfile << cluster_ctx.clb_nlist.net_name(net_id).c_str() << "\n";
+                }
+            }
+            mynetfile.close();
+
             
         }
         }
-        if (Options.outtake_ground_truth) {
-
-            std::ofstream myfile;
-            myfile.open("prediction-ground.csv");
-            for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-            {               
-                auto& node = device_ctx.rr_nodes[inode];
-                myfile << to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
-                
-               
-            }
-            myfile.close();
-        }
-
+       
         if(Options.collect_route_iteration_metrics)
         {
         // Metric Data specifically outputs the Routing Iteration stuff. 
