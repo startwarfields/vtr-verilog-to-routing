@@ -464,6 +464,31 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         if (itry_since_last_convergence >= 0) {
             ++itry_since_last_convergence;
         }
+
+
+         /*
+         * Route each net
+         */
+        for (auto net_id : sorted_nets) {
+            
+            bool is_routable = try_timing_driven_route_net(net_id,
+                                                           itry,
+                                                           pres_fac,
+                                                           router_opts,
+                                                           connections_inf,
+                                                           router_iteration_stats,
+                                                           route_structs.pin_criticality,
+                                                           route_structs.rt_node_of_sink,
+                                                           net_delay,
+                                                           *router_lookahead,
+                                                           netlist_pin_lookup,
+                                                           route_timing_info, budgeting_inf);
+
+            if (!is_routable) {
+                return (false); //Impossible to route
+            }
+        }
+
         if (router_opts.do_inference && itry == 1) {
                 
                 
@@ -508,7 +533,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         if(router_opts.intake_ground_truth && itry == 1)
         {
             float inf_time_t1 = iteration_timer.elapsed_sec();
-            pres_fac = router_opts.initial_pres_fac;
+            // pres_fac = router_opts.initial_pres_fac;
             // pres_fac *= router_opts.pres_fac_mult;
 
             /* Avoid overflow for high iteration counts, even if acc_cost is big */
@@ -531,49 +556,237 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                 
             }        
             fclose(fp);
-            pathfinder_update_cost(pres_fac, 1.);
-            // inference_file_name = "prediction-ground-pres.csv";
-            // fp = fopen(inference_file_name.c_str(), "r");
-            // for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-            // {
-            //     auto& node = device_ctx.rr_nodes[inode];
-            //     if ((read = getline(&line, &len, fp)) != -1) 
-            //     {
-            //         route_ctx.rr_node_route_inf[inode].pres_cost = strtod(line, &ptr);
-            //         // route_ctx.rr_node_route_inf[inode].pres_cost = 1;
-            //         // device_ctx.rr_indexed_data[cost_index].base_cost = 1; 
-            //     }
-                
-            // }        
-            // fclose(fp);
-            // float inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
-            // VTR_LOG("Loading Prediction-Ground took %6.1f\n", inf_time_t2);
-            // pathfinder_update_cost(1, 1);
-        }
-        /*
-         * Route each net
-         */
-        for (auto net_id : sorted_nets) {
-            
-            bool is_routable = try_timing_driven_route_net(net_id,
-                                                           itry,
-                                                           pres_fac,
-                                                           router_opts,
-                                                           connections_inf,
-                                                           router_iteration_stats,
-                                                           route_structs.pin_criticality,
-                                                           route_structs.rt_node_of_sink,
-                                                           net_delay,
-                                                           *router_lookahead,
-                                                           netlist_pin_lookup,
-                                                           route_timing_info, budgeting_inf);
-
-            if (!is_routable) {
-                return (false); //Impossible to route
-            }
-        }
         
+            inference_file_name = "prediction-ground-pres.csv";
+            fp = fopen(inference_file_name.c_str(), "r");
+            for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+            {
+                auto& node = device_ctx.rr_nodes[inode];
+                if ((read = getline(&line, &len, fp)) != -1) 
+                {
+                    route_ctx.rr_node_route_inf[inode].pres_cost = strtod(line, &ptr);
+                    // route_ctx.rr_node_route_inf[inode].pres_cost = 1;
+                    // device_ctx.rr_indexed_data[cost_index].base_cost = 1; 
+                }
+                
+            }
+            pres_fac = strtod(line, &ptr);
+            fclose(fp);
+            float inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
+            VTR_LOG("Loading Prediction-Ground took %6.1f\n", inf_time_t2);
+            pathfinder_update_cost(pres_fac, router_opts.acc_fac);
+
+        }
+       
+        //Update pres_fac and resource costs
+        auto& device_ctx =  g_vpr_ctx.mutable_device();
+       
+            // Grab the Source & Sink Edges.... 
+             for (auto net_id : cluster_ctx.clb_nlist.nets()) {  
+            
+                        t_trace* tptr = route_ctx.trace[net_id].head;
+        
+                        if(tptr !=nullptr)
+                        {
+                            int source = route_ctx.trace[net_id].head->index;
+                            int sink = route_ctx.trace[net_id].tail->index;
+                            
+                            while (tptr != nullptr) {
+                                int inode = tptr->index;
+                                auto& node = device_ctx.rr_nodes[inode];
+                                node.set_source_node(source);
+                                node.set_sink_node(sink);
+                                node.set_num_netlists(1);
+
+                                tptr = tptr->next;
+                            }         
+                        }
+            }
+
+        if(!router_opts.intake_ground_truth && !router_opts.do_inference)
+            {
+                // Refactor to be a cmd-line and not hardcoded :^)
+                string run_type = "__reg__";
+
+                device_ctx.itry++;
+                std::ofstream myfile2;
+                myfile2.open("../../graph_data/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-nodes__"+to_string(itry)+"__.csv");
+                myfile2 << "node_id,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost\n";
+
+                // myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
+                string node_data = "";
+                for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+                {               
+                    auto& node = device_ctx.rr_nodes[inode];
+                    // ID
+                    node_data = "";
+                    node_data += to_string(inode)+",";
     
+                    // Node Type
+                    node_data +=  to_string(node.type()) + ",";
+
+                    node_data +=  to_string(node.get_num_netlists()) + ",";
+                    // Source Node
+                    if(node.get_source_node() == -1) {
+                        
+                    node_data +=  to_string(0)+ ",";
+                    node_data +=  to_string(inode)+",";
+                    // Sink Node
+                    node_data +=  to_string(inode)+",";
+                    }
+                    else {
+                    node_data +=  to_string(1) + ",";
+                    node_data +=  to_string(node.get_source_node())+",";
+                    // Sink Node
+                    node_data +=  to_string(node.get_sink_node())+",";
+
+                    }
+                    int overuse = route_ctx.rr_node_route_inf[inode].occ() - device_ctx.rr_nodes[inode].capacity();
+                    if (overuse > 0) {
+                        node_data +=  to_string(1) + ",";
+                    }
+                    else {
+                    node_data +=  to_string(0) + ",";
+                    }
+                    // Route Capacity
+                    node_data +=  to_string(node.capacity()) + ",";
+                    // Initial Cost
+                    node_data +=  to_string(1) + "\n";
+                    myfile2 << node_data;
+                }
+            
+                myfile2.close();
+            }
+
+            // This code outputs the graph data to a local directory for inference.
+            if(router_opts.do_inference && itry == 1)
+            {
+                string run_type = "__gnn__";
+                float inf_time_t1 = iteration_timer.elapsed_sec();
+
+                device_ctx.itry++;
+                std::ofstream myfile2;
+                myfile2.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-nodes__"+to_string(itry)+"__.csv");
+                myfile2<< "node_id,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost\n";
+
+                // myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
+                string node_data = "";
+                for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+                {               
+                    auto& node = device_ctx.rr_nodes[inode];
+                    // ID
+                    node_data = "";
+                    node_data += to_string(inode)+",";
+    
+                    // Node Type
+                    node_data +=  to_string(node.type()) + ",";
+
+                    node_data +=  to_string(node.get_num_netlists()) + ",";
+                    // Source Node
+                    if(node.get_source_node() == -1) {
+                        
+                    node_data +=  to_string(0)+ ",";
+                    node_data +=  to_string(inode)+",";
+                    // Sink Node
+                    node_data +=  to_string(inode)+",";
+                    }
+                    else {
+                    node_data +=  to_string(1) + ",";
+                    node_data +=  to_string(node.get_source_node())+",";
+                    // Sink Node
+                    node_data +=  to_string(node.get_sink_node())+",";
+
+                    }
+                    int overuse = route_ctx.rr_node_route_inf[inode].occ() - device_ctx.rr_nodes[inode].capacity();
+                    if (overuse > 0) {
+                        node_data +=  to_string(1) + ",";
+                    }
+                    else {
+                    node_data +=  to_string(0) + ",";
+                    }
+                    // Route Capacity
+                    node_data +=  to_string(node.capacity()) + ",";
+                    // Initial Cost
+                    node_data +=  to_string(1) + "\n";
+                    myfile2 << node_data;
+                }
+                 myfile2.close();
+                // History Cost File 
+                std::ofstream myfile;
+               
+                myfile.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-hcost.csv");
+                myfile<< "history_cost\n";  
+                for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+                {               
+                auto& node = device_ctx.rr_nodes[inode];
+                myfile << to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n" ;
+                
+                }
+                myfile.close();
+                // Edges
+                myfile2.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-edges.csv");
+                myfile2<< "src_node,sink_node\n";
+                for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+                {               
+                    auto& node = device_ctx.rr_nodes[inode];
+                    for(size_t iedge = 0; iedge < device_ctx.rr_nodes[inode].num_edges(); iedge++)
+                        {   
+                            myfile2 << to_string(inode) << "," << to_string(node.edge_sink_node(iedge)) << "\n";
+                        }
+                
+                }
+                myfile2.close();
+                std::ofstream mynetfile;
+                mynetfile.open(route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-netorder.csv");            
+                for (auto net_id : sorted_nets) {
+                    if (!cluster_ctx.clb_nlist.net_is_ignored(net_id)) {
+                        mynetfile << cluster_ctx.clb_nlist.net_name(net_id).c_str() << "\n";
+                    }
+                }
+                mynetfile.close();
+                float inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
+                VTR_LOG("Saving CSV File took %6.1f\n", inf_time_t2);
+
+
+                
+            }
+            
+         if (router_opts.outtake_ground_truth) {
+
+            std::ofstream myfile;
+            // unsigned int num_sinks = cluster_ctx.clb_nlist.net_sinks(net_id).size();
+            myfile.open("prediction-ground-acc.csv");
+            for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+            {     
+                auto& node = device_ctx.rr_nodes[inode];              
+                float cost = route_ctx.rr_node_route_inf[inode].acc_cost;
+                myfile << to_string(cost)+"\n";
+                // myfile << to_string(device_ctx.rr_indexed_data[cost_index].base_cost)+",";
+                // myfile << to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+",";
+                // myfile << to_string(route_ctx.rr_node_route_inf[inode].pres_cost)+"\n";
+            
+                
+               
+            }
+            myfile.close();
+
+            myfile.open("prediction-ground-pres.csv");
+            for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+            {     
+                auto& node = device_ctx.rr_nodes[inode];              
+                float cost = route_ctx.rr_node_route_inf[inode].pres_cost;
+                myfile << to_string(cost)+"\n";
+                // myfile << to_string(device_ctx.rr_indexed_data[cost_index].base_cost)+",";
+                // myfile << to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+",";
+                // myfile << to_string(route_ctx.rr_node_route_inf[inode].pres_cost)+"\n";
+            
+                
+               
+            }
+            myfile << to_string(pres_fac);
+            myfile.close();
+        }
+
 
         // Make sure any CLB OPINs used up by subblocks being hooked directly to them are reserved for that purpose
         bool rip_up_local_opins = (itry == 1 ? false : true);
@@ -746,216 +959,12 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
             router_congestion_mode = RouterCongestionMode::CONFLICTED;
         }
 
-        //Update pres_fac and resource costs
-        auto& device_ctx =  g_vpr_ctx.mutable_device();
-       
-            // Grab the Source & Sink Edges.... 
-             for (auto net_id : cluster_ctx.clb_nlist.nets()) {  
-            
-                        t_trace* tptr = route_ctx.trace[net_id].head;
         
-                        if(tptr !=nullptr)
-                        {
-                            int source = route_ctx.trace[net_id].head->index;
-                            int sink = route_ctx.trace[net_id].tail->index;
-                            
-                            while (tptr != nullptr) {
-                                int inode = tptr->index;
-                                auto& node = device_ctx.rr_nodes[inode];
-                                node.set_source_node(source);
-                                node.set_sink_node(sink);
-                                node.set_num_netlists(1);
-
-                                tptr = tptr->next;
-                            }         
-                        }
-            }
        
         
             
             // This output Graph Data in the graph data directory for training.
-            if(false && !router_opts.intake_ground_truth && !router_opts.do_inference)
-            {
-                // Refactor to be a cmd-line and not hardcoded :^)
-                string run_type = "__reg__";
-
-                device_ctx.itry++;
-                std::ofstream myfile2;
-                myfile2.open("../../graph_data/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-nodes__"+to_string(itry)+"__.csv");
-                myfile2 << "node_id,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost\n";
-
-                // myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
-                string node_data = "";
-                for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-                {               
-                    auto& node = device_ctx.rr_nodes[inode];
-                    // ID
-                    node_data = "";
-                    node_data += to_string(inode)+",";
-    
-                    // Node Type
-                    node_data +=  to_string(node.type()) + ",";
-
-                    node_data +=  to_string(node.get_num_netlists()) + ",";
-                    // Source Node
-                    if(node.get_source_node() == -1) {
-                        
-                    node_data +=  to_string(0)+ ",";
-                    node_data +=  to_string(inode)+",";
-                    // Sink Node
-                    node_data +=  to_string(inode)+",";
-                    }
-                    else {
-                    node_data +=  to_string(1) + ",";
-                    node_data +=  to_string(node.get_source_node())+",";
-                    // Sink Node
-                    node_data +=  to_string(node.get_sink_node())+",";
-
-                    }
-                    int overuse = route_ctx.rr_node_route_inf[inode].occ() - device_ctx.rr_nodes[inode].capacity();
-                    if (overuse > 0) {
-                        node_data +=  to_string(1) + ",";
-                    }
-                    else {
-                    node_data +=  to_string(0) + ",";
-                    }
-                    // Route Capacity
-                    node_data +=  to_string(node.capacity()) + ",";
-                    // Initial Cost
-                    node_data +=  to_string(1) + "\n";
-                    myfile2 << node_data;
-                }
             
-                myfile2.close();
-            }
-
-            // This code outputs the graph data to a local directory for inference.
-            if(router_opts.do_inference && itry == 1)
-            {
-                string run_type = "__gnn__";
-                float inf_time_t1 = iteration_timer.elapsed_sec();
-
-                device_ctx.itry++;
-                std::ofstream myfile2;
-                myfile2.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-nodes__"+to_string(itry)+"__.csv");
-                myfile2<< "node_id,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost\n";
-
-                // myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
-                string node_data = "";
-                for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-                {               
-                    auto& node = device_ctx.rr_nodes[inode];
-                    // ID
-                    node_data = "";
-                    node_data += to_string(inode)+",";
-    
-                    // Node Type
-                    node_data +=  to_string(node.type()) + ",";
-
-                    node_data +=  to_string(node.get_num_netlists()) + ",";
-                    // Source Node
-                    if(node.get_source_node() == -1) {
-                        
-                    node_data +=  to_string(0)+ ",";
-                    node_data +=  to_string(inode)+",";
-                    // Sink Node
-                    node_data +=  to_string(inode)+",";
-                    }
-                    else {
-                    node_data +=  to_string(1) + ",";
-                    node_data +=  to_string(node.get_source_node())+",";
-                    // Sink Node
-                    node_data +=  to_string(node.get_sink_node())+",";
-
-                    }
-                    int overuse = route_ctx.rr_node_route_inf[inode].occ() - device_ctx.rr_nodes[inode].capacity();
-                    if (overuse > 0) {
-                        node_data +=  to_string(1) + ",";
-                    }
-                    else {
-                    node_data +=  to_string(0) + ",";
-                    }
-                    // Route Capacity
-                    node_data +=  to_string(node.capacity()) + ",";
-                    // Initial Cost
-                    node_data +=  to_string(1) + "\n";
-                    myfile2 << node_data;
-                }
-                 myfile2.close();
-                // History Cost File 
-                std::ofstream myfile;
-               
-                myfile.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-hcost.csv");
-                myfile<< "history_cost\n";  
-                for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-                {               
-                auto& node = device_ctx.rr_nodes[inode];
-                myfile << to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n" ;
-                
-                }
-                myfile.close();
-                // Edges
-                myfile2.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-edges.csv");
-                myfile2<< "src_node,sink_node\n";
-                for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-                {               
-                    auto& node = device_ctx.rr_nodes[inode];
-                    for(size_t iedge = 0; iedge < device_ctx.rr_nodes[inode].num_edges(); iedge++)
-                        {   
-                            myfile2 << to_string(inode) << "," << to_string(node.edge_sink_node(iedge)) << "\n";
-                        }
-                
-                }
-                myfile2.close();
-                std::ofstream mynetfile;
-                mynetfile.open(route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-netorder.csv");            
-                for (auto net_id : sorted_nets) {
-                    if (!cluster_ctx.clb_nlist.net_is_ignored(net_id)) {
-                        mynetfile << cluster_ctx.clb_nlist.net_name(net_id).c_str() << "\n";
-                    }
-                }
-                mynetfile.close();
-                float inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
-                VTR_LOG("Saving CSV File took %6.1f\n", inf_time_t2);
-
-
-                
-            }
-            
-         if (router_opts.outtake_ground_truth) {
-
-            std::ofstream myfile;
-            // unsigned int num_sinks = cluster_ctx.clb_nlist.net_sinks(net_id).size();
-            myfile.open("prediction-ground-acc.csv");
-            for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-            {     
-                auto& node = device_ctx.rr_nodes[inode];              
-                float cost = route_ctx.rr_node_route_inf[inode].acc_cost;
-                myfile << to_string(cost)+"\n";
-                // myfile << to_string(device_ctx.rr_indexed_data[cost_index].base_cost)+",";
-                // myfile << to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+",";
-                // myfile << to_string(route_ctx.rr_node_route_inf[inode].pres_cost)+"\n";
-            
-                
-               
-            }
-            myfile.close();
-            // myfile.open("prediction-ground-pres.csv");
-            // for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-            // {     
-            //     auto& node = device_ctx.rr_nodes[inode];              
-            //     float cost = route_ctx.rr_node_route_inf[inode].pres_cost;
-            //     myfile << to_string(cost)+"\n";
-            //     // myfile << to_string(device_ctx.rr_indexed_data[cost_index].base_cost)+",";
-            //     // myfile << to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+",";
-            //     // myfile << to_string(route_ctx.rr_node_route_inf[inode].pres_cost)+"\n";
-            
-                
-               
-            // }
-            // myfile.close();
-        }
-
 
         if (itry == 1 && !router_opts.do_inference && !router_opts.intake_ground_truth) {
                 pres_fac = router_opts.initial_pres_fac;
