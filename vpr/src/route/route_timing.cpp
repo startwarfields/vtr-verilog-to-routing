@@ -442,8 +442,8 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
 
     if(router_opts.collect_metrics)
     {   
-      
-        rim_file.open("../../route_metrics/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"route_metrics.csv");
+        
+        rim_file.open("../../route_metrics/"+route_ctx.metric_dir+"/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"route_metrics.csv");
         rim_file<< "Iteration,Time,Pres Fac,BBs Updated,Heap Push,ReRouted Connections,ReRouted Nets,Overused RR Nodes,Wirelength,CPD (ns),sTNS (ns),sWNS (ns),hTNS (ns),hWNS(ns),Estimated Successful Iterations\n";
     }
     print_route_status_header();
@@ -512,7 +512,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
 
         
 
-        if ((router_opts.gnntype == 2) && itry == 1) {
+        if ((router_opts.gnntype == 1) && itry == 1) {
               // This code outputs the graph data to a local directory for inference.
             
                 float inf_time_t1 = iteration_timer.elapsed_sec();

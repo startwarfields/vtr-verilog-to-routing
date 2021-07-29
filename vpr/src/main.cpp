@@ -61,8 +61,13 @@ int main(int argc, const char** argv) {
         g_vpr_ctx.mutable_routing().circuitname= vpr_setup.FileNameOpts.CircuitName;
         // Get The Architecture Name Dynamically.
         char *archname_file = strrchr((char *) vpr_setup.FileNameOpts.ArchFile.c_str(), '/');
+        char *metric_dir = strtok((char *) vpr_setup.FileNameOpts.ArchFile.c_str(), "/");
+        for (int i = 0; i < 4; i++) {
+            metric_dir = strtok(NULL, "/");
+        }
         char *token = strtok(((char *) (archname_file+1)), ".");
         g_vpr_ctx.mutable_routing().archname= token;
+         g_vpr_ctx.mutable_routing().metric_dir = metric_dir;
 
         if (Options.show_version) {
             return SUCCESS_EXIT_CODE;

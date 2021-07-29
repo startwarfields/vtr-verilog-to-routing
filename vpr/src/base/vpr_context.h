@@ -254,6 +254,7 @@ struct RoutingContext : public Context {
     
     std::string circuitname; // Name of the Circuit 
     std::string archname; // Name of the Architecture
+    std::string metric_dir; // Directory where metrics are stored
     bool inference_mode;
     std::string inference_path; // File Path to inference
     /* [0..num_nets-1] of linked list start pointers.  Defines the routing.  */

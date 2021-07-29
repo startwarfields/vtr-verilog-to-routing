@@ -1423,7 +1423,7 @@ static argparse::ArgumentParser create_arg_parser(std::string prog_name, t_optio
         .default_value("16")
         .show_in(argparse::ShowIn::HELP_ONLY);
     // GNN VPR
-    route_grp.add_argument<int, ParseOnOff>(args.GNNType, "--gnntype")
+    route_grp.add_argument(args.GNNType, "--gnntype")
         .help("Selects the Type of Router 0. Default 1. GNN 2. Hyper Pres Fac")
         .default_value("0")
         .show_in(argparse::ShowIn::HELP_ONLY);
