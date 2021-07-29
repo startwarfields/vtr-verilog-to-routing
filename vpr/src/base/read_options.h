@@ -118,11 +118,10 @@ struct t_options {
     argparse::ArgValue<bool> verify_binary_search;
     argparse::ArgValue<e_router_algorithm> RouterAlgorithm;
     argparse::ArgValue<int> min_incremental_reroute_fanout;
-    argparse::ArgValue<bool> do_inference; // Inference 
+    argparse::ArgValue<int> GNNType; // 0. Default 1. Hyper Pres Fac  2. GNN Inference 3. Intake Initial Costs
     argparse::ArgValue<bool> collect_data; // Collect all router features
-    argparse::ArgValue<bool> collect_route_iteration_metrics; // Output Router Iteration Statistics in a CSV (rather than log)
-    argparse::ArgValue<bool> outtake_ground_truth; // Outputs Final History Cost as "prediction-goal.csv" in output directory
-    argparse::ArgValue<bool> intake_ground_truth; // Inputs "prediction-goal.csv" from output directory
+    argparse::ArgValue<bool> collect_metrics; // Output Router Iteration Statistics in a CSV (rather than log)
+    argparse::ArgValue<bool> output_final_costs; // Outputs Final History Cost as "prediction-goal.csv" in output directory
 
     /* Timing-driven router options only */
     argparse::ArgValue<float> astar_fac;

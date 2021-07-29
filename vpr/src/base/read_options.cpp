@@ -1423,24 +1423,20 @@ static argparse::ArgumentParser create_arg_parser(std::string prog_name, t_optio
         .default_value("16")
         .show_in(argparse::ShowIn::HELP_ONLY);
     // GNN VPR
-    route_grp.add_argument<bool, ParseOnOff>(args.do_inference, "--do_inference")
-        .help("Routing Costs will be input from GNN Inference")
-        .default_value("off")
+    route_grp.add_argument<int, ParseOnOff>(args.GNNType, "--gnntype")
+        .help("Selects the Type of Router 0. Default 1. GNN 2. Hyper Pres Fac")
+        .default_value("0")
         .show_in(argparse::ShowIn::HELP_ONLY);
     route_grp.add_argument<bool, ParseOnOff>(args.collect_data, "--collect_data")
-        .help("Routing Costs will be input from GNN Inference")
+        .help("Outputs RR Graph & Node Data to CSVs")
         .default_value("off")
         .show_in(argparse::ShowIn::HELP_ONLY);
-    route_grp.add_argument<bool, ParseOnOff>(args.collect_route_iteration_metrics, "--collect_route_iteration_metrics")
-        .help("Routing Costs will be input from GNN Inference")
+    route_grp.add_argument<bool, ParseOnOff>(args.collect_metrics, "--collect_metrics")
+        .help("Outputs Routing Metrics to csv file. Named based on GNN Type")
         .default_value("on")
         .show_in(argparse::ShowIn::HELP_ONLY);
-    route_grp.add_argument<bool, ParseOnOff>(args.outtake_ground_truth, "--outtake_ground_truth")
+    route_grp.add_argument<bool, ParseOnOff>(args.output_final_costs, "--output_final_costs")
         .help("Outputs Final History Costs (facc_cost) as a prediction-goal.csv")
-        .default_value("off")
-        .show_in(argparse::ShowIn::HELP_ONLY);
-    route_grp.add_argument<bool, ParseOnOff>(args.intake_ground_truth, "--intake_ground_truth")
-        .help("Inputs Final History Costs (facc_cost) from prediction-goal.csv")
         .default_value("off")
         .show_in(argparse::ShowIn::HELP_ONLY);
     auto& route_timing_grp = parser.add_argument_group("timing-driven routing options");

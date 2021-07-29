@@ -448,7 +448,6 @@ void pathfinder_update_cost(float pres_fac, float acc_fac) {
      * times acc_fac.  It also updates pres_cost, since pres_fac may have        *
      * changed.  THIS ROUTINE ASSUMES THE OCCUPANCY VALUES IN RR_NODE ARE UP TO  *
      * DATE.                                                                     */
-
     int occ, capacity;
     auto& device_ctx = g_vpr_ctx.device();
     auto& route_ctx = g_vpr_ctx.mutable_routing();
@@ -458,7 +457,7 @@ void pathfinder_update_cost(float pres_fac, float acc_fac) {
         capacity = device_ctx.rr_nodes[inode].capacity();
 
         if (occ > capacity) {
-            route_ctx.rr_node_route_inf[inode].acc_cost += (occ - capacity) * acc_fac;
+            route_ctx.rr_node_route_inf[inode].acc_cost += (occ - capacity) * acc_fac * pres_fac;
             route_ctx.rr_node_route_inf[inode].pres_cost = 1.0 + (occ + 1 - capacity) * pres_fac;
         }
 
@@ -468,6 +467,12 @@ void pathfinder_update_cost(float pres_fac, float acc_fac) {
         else if (occ == capacity) {
             route_ctx.rr_node_route_inf[inode].pres_cost = 1.0 + pres_fac;
         }
+        // else if ((capacity - occ) == 1) {
+        //     route_ctx.rr_node_route_inf[inode].pres_cost = 0.5;
+        // }
+        // else {
+        //     route_ctx.rr_node_route_inf[inode].pres_cost = 1;
+        // }
     }
 }
 

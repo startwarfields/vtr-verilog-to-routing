@@ -369,8 +369,20 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
     /*
      * Routing parameters
      */
-    float pres_fac = router_opts.first_iter_pres_fac; /* Typically 0 -> ignore cong. */
+    float pres_fac = 50; /* Typically 0 -> ignore cong. */
+    // float initial_pres_fac =  router_opts.first_iter_pres_fac;
+    float initial_pres_fac =  50;
+    float acc_fac = router_opts.acc_fac;
     int bb_fac = router_opts.bb_factor;
+    bb_fac = 3;
+    acc_fac = 1;
+    // Even GNN Inference gets the Hyper Pres Fac, for now.
+    if (router_opts.gnntype > 0) {
+        pres_fac = 50;
+        initial_pres_fac = 50;
+        bb_fac = 5;
+    }
+  
 
     //When routing conflicts are detected the bounding boxes are scaled
     //by BB_SCALE_FACTOR every BB_SCALE_ITER_COUNT iterations
@@ -405,22 +417,33 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
     RouterStats router_stats;
     // Should Also output to CSV
     std::ofstream rim_file;
-    if(router_opts.collect_route_iteration_metrics)
+
+    string run_type;
+    switch (router_opts.gnntype)
+    {
+    case 0:
+        run_type = "__reg__";
+        break;
+    case 1:
+        run_type = "__gnn__";
+        break;
+    case 2:
+        run_type = "__hpf__";
+        break;
+    case 3:
+        run_type = "__init__";
+    default:
+        run_type = "__reg__";
+        break;
+    }
+        
+        
+        
+
+    if(router_opts.collect_metrics)
     {   
-        string inf;
-        if (router_opts.intake_ground_truth)
-        {
-            inf = "__gnd__";
-        }
-        else if (router_opts.do_inference)
-        {
-            inf = "__gnn__";
-        }
-        else
-        {
-            inf = "__reg__";
-        }
-        rim_file.open("../../route_metrics/"+route_ctx.archname+"__"+route_ctx.circuitname+inf+"route_metrics.csv");
+      
+        rim_file.open("../../route_metrics/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"route_metrics.csv");
         rim_file<< "Iteration,Time,Pres Fac,BBs Updated,Heap Push,ReRouted Connections,ReRouted Nets,Overused RR Nodes,Wirelength,CPD (ns),sTNS (ns),sWNS (ns),hTNS (ns),hWNS(ns),Estimated Successful Iterations\n";
     }
     print_route_status_header();
@@ -464,210 +487,38 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         if (itry_since_last_convergence >= 0) {
             ++itry_since_last_convergence;
         }
-
-
-         /*
-         * Route each net
-         */
-        for (auto net_id : sorted_nets) {
+        //  /*
+        //  * Route each net
+        //  */
+        // for (auto net_id : sorted_nets) {
             
-            bool is_routable = try_timing_driven_route_net(net_id,
-                                                           itry,
-                                                           pres_fac,
-                                                           router_opts,
-                                                           connections_inf,
-                                                           router_iteration_stats,
-                                                           route_structs.pin_criticality,
-                                                           route_structs.rt_node_of_sink,
-                                                           net_delay,
-                                                           *router_lookahead,
-                                                           netlist_pin_lookup,
-                                                           route_timing_info, budgeting_inf);
+        //     bool is_routable = try_timing_driven_route_net(net_id,
+        //                                                    itry,
+        //                                                    pres_fac,
+        //                                                    router_opts,
+        //                                                    connections_inf,
+        //                                                    router_iteration_stats,
+        //                                                    route_structs.pin_criticality,
+        //                                                    route_structs.rt_node_of_sink,
+        //                                                    net_delay,
+        //                                                    *router_lookahead,
+        //                                                    netlist_pin_lookup,
+        //                                                    route_timing_info, budgeting_inf);
 
-            if (!is_routable) {
-                return (false); //Impossible to route
-            }
-        }
+        //     if (!is_routable) {
+        //         return (false); //Impossible to route
+        //     }
+        // }
 
-        if (router_opts.do_inference && itry == 1) {
-                
-                
-        float inf_time_t1 = iteration_timer.elapsed_sec();
         
-        // * Update to pass in arch & circuit arguments.
-        string command = "/mnt/e/benchmarks/Outputs/inf.sh > pyoutput.txt";
-        system(command.c_str());
 
-        float inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
-        VTR_LOG("Inferencing took %6.1f\n", inf_time_t2);
-     
-        pres_fac = router_opts.initial_pres_fac;
-        pathfinder_update_cost(pres_fac, 0.);
-        pres_fac *= router_opts.pres_fac_mult;
-        pres_fac = min(pres_fac, static_cast<float>(HUGE_POSITIVE_FLOAT / 1e5));
-       
-                 /* Acc_fac=0 for first iter. */
-        // The AI Suggested this here: I'm worried that this will cause the router to predict badly,
-        // but I'm not sure how to fix that.
-        /* Acc_fac=0 for first iter. */
-        inf_time_t1 = iteration_timer.elapsed_sec();
-        string inference_file_name = "prediction.csv";
-        fp = fopen(inference_file_name.c_str(), "r");
-        for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-        {
-            auto& node = device_ctx.rr_nodes[inode];
-            if ((read = getline(&line, &len, fp)) != -1) {
-
-                        route_ctx.rr_node_route_inf[inode].acc_cost = strtod(line, &ptr);
-                     
-            }
+        if ((router_opts.gnntype == 2) && itry == 1) {
+              // This code outputs the graph data to a local directory for inference.
             
-        }        
-        fclose(fp);
-      
-        inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
-        VTR_LOG("Loading Prediction took %6.1f\n", inf_time_t2);
-        pathfinder_update_cost(pres_fac, router_opts.acc_fac);
-        }
-
-        if(router_opts.intake_ground_truth && itry == 1)
-        {
-            float inf_time_t1 = iteration_timer.elapsed_sec();
-            // pres_fac = router_opts.initial_pres_fac;
-            // pres_fac *= router_opts.pres_fac_mult;
-
-            /* Avoid overflow for high iteration counts, even if acc_cost is big */
-                // pres_fac = min(pres_fac, static_cast<float>(HUGE_POSITIVE_FLOAT / 1e5));
-
-            // The AI Suggested this here: I'm worried that this will cause the router to predict badly,
-            // but I'm not sure how to fix that.
-            // pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */
-            string inference_file_name = "prediction-ground-acc.csv";
-            fp = fopen(inference_file_name.c_str(), "r");
-            for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-            {
-                auto& node = device_ctx.rr_nodes[inode];
-                if ((read = getline(&line, &len, fp)) != -1) 
-                {
-                    route_ctx.rr_node_route_inf[inode].acc_cost = strtod(line, &ptr);
-                    // route_ctx.rr_node_route_inf[inode].pres_cost = 1;
-                    // device_ctx.rr_indexed_data[cost_index].base_cost = 1; 
-                }
-                
-            }        
-            fclose(fp);
-        
-            inference_file_name = "prediction-ground-pres.csv";
-            fp = fopen(inference_file_name.c_str(), "r");
-            for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-            {
-                auto& node = device_ctx.rr_nodes[inode];
-                if ((read = getline(&line, &len, fp)) != -1) 
-                {
-                    route_ctx.rr_node_route_inf[inode].pres_cost = strtod(line, &ptr);
-                    // route_ctx.rr_node_route_inf[inode].pres_cost = 1;
-                    // device_ctx.rr_indexed_data[cost_index].base_cost = 1; 
-                }
-                
-            }
-            pres_fac = strtod(line, &ptr);
-            fclose(fp);
-            float inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
-            VTR_LOG("Loading Prediction-Ground took %6.1f\n", inf_time_t2);
-            pathfinder_update_cost(pres_fac, router_opts.acc_fac);
-
-        }
-       
-        //Update pres_fac and resource costs
-        auto& device_ctx =  g_vpr_ctx.mutable_device();
-       
-            // Grab the Source & Sink Edges.... 
-             for (auto net_id : cluster_ctx.clb_nlist.nets()) {  
-            
-                        t_trace* tptr = route_ctx.trace[net_id].head;
-        
-                        if(tptr !=nullptr)
-                        {
-                            int source = route_ctx.trace[net_id].head->index;
-                            int sink = route_ctx.trace[net_id].tail->index;
-                            
-                            while (tptr != nullptr) {
-                                int inode = tptr->index;
-                                auto& node = device_ctx.rr_nodes[inode];
-                                node.set_source_node(source);
-                                node.set_sink_node(sink);
-                                node.set_num_netlists(1);
-
-                                tptr = tptr->next;
-                            }         
-                        }
-            }
-
-        if(!router_opts.intake_ground_truth && !router_opts.do_inference)
-            {
-                // Refactor to be a cmd-line and not hardcoded :^)
-                string run_type = "__reg__";
-
-                device_ctx.itry++;
-                std::ofstream myfile2;
-                myfile2.open("../../graph_data/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-nodes__"+to_string(itry)+"__.csv");
-                myfile2 << "node_id,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost\n";
-
-                // myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
-                string node_data = "";
-                for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
-                {               
-                    auto& node = device_ctx.rr_nodes[inode];
-                    // ID
-                    node_data = "";
-                    node_data += to_string(inode)+",";
-    
-                    // Node Type
-                    node_data +=  to_string(node.type()) + ",";
-
-                    node_data +=  to_string(node.get_num_netlists()) + ",";
-                    // Source Node
-                    if(node.get_source_node() == -1) {
-                        
-                    node_data +=  to_string(0)+ ",";
-                    node_data +=  to_string(inode)+",";
-                    // Sink Node
-                    node_data +=  to_string(inode)+",";
-                    }
-                    else {
-                    node_data +=  to_string(1) + ",";
-                    node_data +=  to_string(node.get_source_node())+",";
-                    // Sink Node
-                    node_data +=  to_string(node.get_sink_node())+",";
-
-                    }
-                    int overuse = route_ctx.rr_node_route_inf[inode].occ() - device_ctx.rr_nodes[inode].capacity();
-                    if (overuse > 0) {
-                        node_data +=  to_string(1) + ",";
-                    }
-                    else {
-                    node_data +=  to_string(0) + ",";
-                    }
-                    // Route Capacity
-                    node_data +=  to_string(node.capacity()) + ",";
-                    // Initial Cost
-                    node_data +=  to_string(1) + "\n";
-                    myfile2 << node_data;
-                }
-            
-                myfile2.close();
-            }
-
-            // This code outputs the graph data to a local directory for inference.
-            if(router_opts.do_inference && itry == 1)
-            {
-                string run_type = "__gnn__";
                 float inf_time_t1 = iteration_timer.elapsed_sec();
-
-                device_ctx.itry++;
                 std::ofstream myfile2;
                 myfile2.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-nodes__"+to_string(itry)+"__.csv");
-                myfile2<< "node_id,node_type,num_netlists,in_netlist,src_node,sink_node,overused,capacity,initial_cost\n";
+                myfile2<< "node_id,node_type,num_netlists,acc_cost,pres_cost,global_pres_factor,global_pres_mult,overused,capacity,initial_cost\n";
 
                 // myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
                 string node_data = "";
@@ -682,21 +533,14 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                     node_data +=  to_string(node.type()) + ",";
 
                     node_data +=  to_string(node.get_num_netlists()) + ",";
-                    // Source Node
-                    if(node.get_source_node() == -1) {
-                        
-                    node_data +=  to_string(0)+ ",";
-                    node_data +=  to_string(inode)+",";
-                    // Sink Node
-                    node_data +=  to_string(inode)+",";
-                    }
-                    else {
-                    node_data +=  to_string(1) + ",";
-                    node_data +=  to_string(node.get_source_node())+",";
-                    // Sink Node
-                    node_data +=  to_string(node.get_sink_node())+",";
-
-                    }
+                    // Accumulated Cost
+                    node_data +=  to_string(route_ctx.rr_node_route_inf[inode].acc_cost) + ",";
+                    // Present Cost
+                    node_data +=  to_string(route_ctx.rr_node_route_inf[inode].pres_cost) + ",";
+                    // Global Pres Factor
+                    node_data +=  to_string(pres_fac) + ",";
+                    // Global Pres Multiplier
+                    node_data +=  to_string(router_opts.pres_fac_mult) + ",";
                     int overuse = route_ctx.rr_node_route_inf[inode].occ() - device_ctx.rr_nodes[inode].capacity();
                     if (overuse > 0) {
                         node_data +=  to_string(1) + ",";
@@ -746,12 +590,194 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                 mynetfile.close();
                 float inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
                 VTR_LOG("Saving CSV File took %6.1f\n", inf_time_t2);
+            
+            inf_time_t1 = iteration_timer.elapsed_sec();
+            
+            // * Update to pass in arch & circuit arguments.
+            string command = "/mnt/e/benchmarks/Outputs/inf.sh > pyoutput.txt";
+            system(command.c_str());
 
+            inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
+            VTR_LOG("Inferencing took %6.1f\n", inf_time_t2);
+        
+            // pres_fac = 10;
+            // initial_pres_fac = pres_fac;
+            // pathfinder_update_cost(pres_fac, 0.);
+            // pres_fac *= router_opts.pres_fac_mult;
+            // pres_fac = min(pres_fac, static_cast<float>(HUGE_POSITIVE_FLOAT / 1e5));
+        
+                    /* Acc_fac=0 for first iter. */
+            // The AI Suggested this here: I'm worried that this will cause the router to predict badly,
+            // but I'm not sure how to fix that.
+            /* Acc_fac=0 for first iter. */
+            inf_time_t1 = iteration_timer.elapsed_sec();
+            string inference_file_name = "prediction.csv";
+            fp = fopen(inference_file_name.c_str(), "r");
+            for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+            {
+                auto& node = device_ctx.rr_nodes[inode];
+                if ((read = getline(&line, &len, fp)) != -1) {
 
+                            route_ctx.rr_node_route_inf[inode].acc_cost = strtod(line, &ptr);
+                            route_ctx.rr_node_route_inf[inode].pres_cost = 1.0;
+                }
+                
+            }        
+            fclose(fp);
+        
+            inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
+            VTR_LOG("Loading Prediction took %6.1f\n", inf_time_t2);
+        }
+        // Load In Initial Costs from saved
+        if(router_opts.gnntype == 3 && itry == 1)
+        {
+            float inf_time_t1 = iteration_timer.elapsed_sec();
+            // pres_fac = router_opts.initial_pres_fac;
+            // pres_fac *= router_opts.pres_fac_mult;
+
+            /* Avoid overflow for high iteration counts, even if acc_cost is big */
+                // pres_fac = min(pres_fac, static_cast<float>(HUGE_POSITIVE_FLOAT / 1e5));
+
+            // The AI Suggested this here: I'm worried that this will cause the router to predict badly,
+            // but I'm not sure how to fix that.
+            // pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */
+            string inference_file_name = "prediction-ground-acc.csv";
+            // fp = fopen(inference_file_name.c_str(), "r");
+            // for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+            // {
+            //     auto& node = device_ctx.rr_nodes[inode];
+            //     if ((read = getline(&line, &len, fp)) != -1) 
+            //     {
+            //         route_ctx.rr_node_route_inf[inode].acc_cost = strtod(line, &ptr);
+            //         // route_ctx.rr_node_route_inf[inode].pres_cost = 1;
+            //         // device_ctx.rr_indexed_data[cost_index].base_cost = 1; 
+            //     }
+                
+            // }        
+            // fclose(fp);
+        
+            inference_file_name = "prediction-ground-pres.csv";
+            fp = fopen(inference_file_name.c_str(), "r");
+            for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+            {
+                auto& node = device_ctx.rr_nodes[inode];
+                if ((read = getline(&line, &len, fp)) != -1) 
+                {
+                    route_ctx.rr_node_route_inf[inode].acc_cost *= strtod(line, &ptr);
+                    // if (route_ctx.rr_node_route_inf[inode].pres_cost > 1)
+                        // route_ctx.rr_node_route_inf[inode].pres_cost *=10;
+                    // route_ctx.rr_node_route_inf[inode].pres_cost = 1;
+                    // device_ctx.rr_indexed_data[cost_index].base_cost = 1; 
+                }
                 
             }
+            if ((read = getline(&line, &len, fp)) != -1) 
+                pres_fac = strtod(line, &ptr);
+            initial_pres_fac = pres_fac;
+            // pres_fac /= router_opts.pres_fac_mult;
+            // fclose(fp);
+            float inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
+            VTR_LOG("Loading Prediction-Ground took %6.1f\n", inf_time_t2);
+             
+
+        }
+        /* 
+        * Route each net
+         */
+        for (auto net_id : sorted_nets) {
             
-         if (router_opts.outtake_ground_truth) {
+            bool is_routable = try_timing_driven_route_net(net_id,
+                                                           itry,
+                                                           pres_fac,
+                                                           router_opts,
+                                                           connections_inf,
+                                                           router_iteration_stats,
+                                                           route_structs.pin_criticality,
+                                                           route_structs.rt_node_of_sink,
+                                                           net_delay,
+                                                           *router_lookahead,
+                                                           netlist_pin_lookup,
+                                                           route_timing_info, budgeting_inf);
+
+            if (!is_routable) {
+                return (false); //Impossible to route
+            }
+        }
+        //Update pres_fac and resource costs
+        auto& device_ctx =  g_vpr_ctx.mutable_device();
+       
+            // Grab the Source & Sink Edges.... 
+             for (auto net_id : cluster_ctx.clb_nlist.nets()) {  
+            
+                        t_trace* tptr = route_ctx.trace[net_id].head;
+        
+                        if(tptr !=nullptr)
+                        {
+                            int source = route_ctx.trace[net_id].head->index;
+                            int sink = route_ctx.trace[net_id].tail->index;
+                            
+                            while (tptr != nullptr) {
+                                int inode = tptr->index;
+                                auto& node = device_ctx.rr_nodes[inode];
+                                node.set_source_node(source);
+                                node.set_sink_node(sink);
+                                node.set_num_netlists(1);
+
+                                tptr = tptr->next;
+                            }         
+                        }
+            }
+
+        if(router_opts.collect_data)
+            {
+                // Refactor to be a cmd-line and not hardcoded :^)
+               
+
+                device_ctx.itry++;
+                std::ofstream myfile2;
+                myfile2.open("../../graph_data/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-nodes__"+to_string(itry)+"__.csv");
+                 myfile2<< "node_id,node_type,num_netlists,acc_cost,pres_cost,global_pres_factor,global_pres_mult,overused,capacity,initial_cost\n";
+
+                // myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
+                string node_data = "";
+                for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+                {               
+                    auto& node = device_ctx.rr_nodes[inode];
+                    // ID
+                    node_data = "";
+                    node_data += to_string(inode)+",";
+    
+                    // Node Type
+                    node_data +=  to_string(node.type()) + ",";
+
+                    node_data +=  to_string(node.get_num_netlists()) + ",";
+                    // Accumulated Cost
+                    node_data +=  to_string(route_ctx.rr_node_route_inf[inode].acc_cost) + ",";
+                    // Present Cost
+                    node_data +=  to_string(route_ctx.rr_node_route_inf[inode].pres_cost) + ",";
+                    // Global Pres Factor
+                    node_data +=  to_string(pres_fac) + ",";
+                    // Global Pres Multiplier
+                    node_data +=  to_string(router_opts.pres_fac_mult) + ",";
+                    int overuse = route_ctx.rr_node_route_inf[inode].occ() - device_ctx.rr_nodes[inode].capacity();
+                    if (overuse > 0) {
+                        node_data +=  to_string(1) + ",";
+                    }
+                    else {
+                    node_data +=  to_string(0) + ",";
+                    }
+                    // Route Capacity
+                    node_data +=  to_string(node.capacity()) + ",";
+                    // Initial Cost
+                    node_data +=  to_string(1) + "\n";
+                    myfile2 << node_data;
+                }
+                 myfile2.close();
+            }
+
+          
+            
+         if (router_opts.output_final_costs) {
 
             std::ofstream myfile;
             // unsigned int num_sinks = cluster_ctx.clb_nlist.net_sinks(net_id).size();
@@ -822,7 +848,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
 
         //Output progress
         print_route_status(itry, iter_elapsed_time, pres_fac, num_net_bounding_boxes_updated, router_iteration_stats, overuse_info, wirelength_info, timing_info, est_success_iteration);
-        if(router_opts.collect_route_iteration_metrics)
+        if(router_opts.collect_metrics)
         {
 
             rim_file << to_string(itry) << ","
@@ -899,6 +925,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
             //Note that we use first_iter_pres_fac here (typically zero), and switch to
             //use initial_pres_fac on the next iteration.
             pres_fac = router_opts.first_iter_pres_fac;
+            // pres_fac = initial_pres_fac;
 
             //Reduce timing tolerances to re-route more delay-suboptimal signals
             connections_inf.set_connection_criticality_tolerance(0.7);
@@ -911,11 +938,15 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         }
 
         if (itry_since_last_convergence == 1) {
+
+
+
             //We used first_iter_pres_fac when we started routing again
             //after the first routing convergence. Since that is often zero,
             //we want to set pres_fac to a reasonable (i.e. typically non-zero)
             //value afterwards -- so it grows when multiplied by pres_fac_mult
-            pres_fac = router_opts.initial_pres_fac;
+            pres_fac = initial_pres_fac;
+            // pres_fac = router_opts.initial_pres_fac;
         }
 
         //Have we converged the maximum number of times, did not make any changes, or does it seem
@@ -923,6 +954,62 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         if (legal_convergence_count >= router_opts.max_convergence_count
             || router_iteration_stats.connections_routed == 0
             || early_reconvergence_exit_heuristic(router_opts, itry_since_last_convergence, timing_info, best_routing_metrics)) {
+
+
+
+        if (router_opts.collect_data) {
+         
+
+          
+            string file_name = "../../graph_data/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type;
+            std::ofstream myfile;
+           
+
+            myfile.open(file_name+"graph_data-hcost.csv");
+            myfile<< "present_cost\n";
+            // myfile<< "Node_ID,dest_edges,node_type,source_node,sink_node, Capacity,Initial_Cost,History_Cost\n";
+            for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+            {               
+                auto& node = device_ctx.rr_nodes[inode];
+                // (We'll ju)
+                myfile << to_string(route_ctx.rr_node_route_inf[inode].pres_cost * route_ctx.rr_node_route_inf[inode].acc_cost)+"\n";
+                
+               
+            }
+            myfile.close();
+            std::ofstream myfile2;
+            myfile2.open(file_name+"graph_data-edges.csv");
+                myfile2<< "src_node,sink_node\n";
+                for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
+                {               
+                    auto& node = device_ctx.rr_nodes[inode];
+                    for(size_t iedge = 0; iedge < device_ctx.rr_nodes[inode].num_edges(); iedge++)
+                        {   
+                            myfile2 << to_string(inode) << "," << to_string(node.edge_sink_node(iedge)) << "\n";
+                        }
+                
+                }
+            myfile2.close();
+            std::ofstream mynetfile;
+            auto sorted_nets = std::vector<ClusterNetId>(cluster_ctx.clb_nlist.nets().begin(), cluster_ctx.clb_nlist.nets().end());
+            struct more_sinks_than {
+                inline bool operator()(const ClusterNetId net_index1, const ClusterNetId net_index2) {
+                    auto& cluster_ctx = g_vpr_ctx.clustering();
+                    return cluster_ctx.clb_nlist.net_sinks(net_index1).size() > cluster_ctx.clb_nlist.net_sinks(net_index2).size();
+                }
+            };
+            std::sort(sorted_nets.begin(), sorted_nets.end(), more_sinks_than());
+            mynetfile.open(file_name+"graph_data-netorder.csv");            
+            for (auto net_id : sorted_nets) {
+                if (!cluster_ctx.clb_nlist.net_is_ignored(net_id)) {
+                     mynetfile << cluster_ctx.clb_nlist.net_name(net_id).c_str() << "\n";
+                }
+            }
+            mynetfile.close();
+
+            
+        
+        }
             break; //Done routing
         }
 
@@ -959,31 +1046,17 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
             router_congestion_mode = RouterCongestionMode::CONFLICTED;
         }
 
-        
-       
-        
-            
-            // This output Graph Data in the graph data directory for training.
-            
-
-        if (itry == 1 && !router_opts.do_inference && !router_opts.intake_ground_truth) {
-                pres_fac = router_opts.initial_pres_fac;
+        // * History Costs are Additive, but Present costs are per iteration.       
+        // Modified to ignore history costs for the first few iterations, instead of just the first iteration.
+        if (itry < 3 && (router_opts.gnntype < 2)) {
+                // pres_fac = router_opts.initial_pres_fac;
+                pres_fac *= 1.3;
                 pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */
-                
-
 
         } 
-
-        // ? Inference Happens here, but data collection should happen in main loop.
-         
-         
-    else {
-            pres_fac *= router_opts.pres_fac_mult;
-
-            /* Avoid overflow for high iteration counts, even if acc_cost is big */
-            pres_fac = min(pres_fac, static_cast<float>(HUGE_POSITIVE_FLOAT / 1e5));
-
-            pathfinder_update_cost(pres_fac, router_opts.acc_fac);
+        else {
+            pres_fac *= 1.3;
+            pathfinder_update_cost(pres_fac,acc_fac);
         }
 
         if (router_congestion_mode == RouterCongestionMode::CONFLICTED) {

@@ -949,10 +949,11 @@ struct t_router_opts {
     float reconvergence_cpd_threshold;
     std::string first_iteration_timing_report_file;
     bool strict_checks;
-    bool do_inference;
-    bool collect_route_iteration_metrics;
-    bool intake_ground_truth;
-    bool outtake_ground_truth;
+    int gnntype;
+    bool collect_metrics;
+    bool collect_data;
+    bool input_initial_costs;
+    bool output_final_costs;
 };
 
 struct t_analysis_opts {
