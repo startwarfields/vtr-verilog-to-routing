@@ -369,9 +369,10 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
     /*
      * Routing parameters
      */
-    float pres_fac = 50; /* Typically 0 -> ignore cong. */
+    float pres_fac = router_opts.initial_pres_fac; /* Typically 0 -> ignore cong. */
+    float pres_fac_mult = 1.3;
     // float initial_pres_fac =  router_opts.first_iter_pres_fac;
-    float initial_pres_fac =  50;
+    float initial_pres_fac =  router_opts.initial_pres_fac;
     float acc_fac = router_opts.acc_fac;
     int bb_fac = router_opts.bb_factor;
     bb_fac = 3;
@@ -380,7 +381,8 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
     if (router_opts.gnntype > 0) {
         pres_fac = 50;
         initial_pres_fac = 50;
-        bb_fac = 5;
+        pres_fac_mult = 10;
+        bb_fac = 3;
     }
   
 
@@ -432,6 +434,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         break;
     case 3:
         run_type = "__init__";
+        break;
     default:
         run_type = "__reg__";
         break;
@@ -1050,12 +1053,12 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         // Modified to ignore history costs for the first few iterations, instead of just the first iteration.
         if (itry < 3 && (router_opts.gnntype < 2)) {
                 // pres_fac = router_opts.initial_pres_fac;
-                pres_fac *= 1.3;
+                pres_fac *= pres_fac_mult;
                 pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */
 
         } 
         else {
-            pres_fac *= 1.3;
+            pres_fac *= pres_fac_mult;
             pathfinder_update_cost(pres_fac,acc_fac);
         }
 
