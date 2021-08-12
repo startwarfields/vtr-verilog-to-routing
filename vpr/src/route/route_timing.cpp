@@ -1050,7 +1050,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         }
 
         // * History Costs are Additive, but Present costs are per iteration.       
-        // Modified to ignore history costs for the first few iterations, instead of just the first iteration.
+        // Modified to ignore history costs for the first few giterations, instead of just the first iteration.
         if (itry < 3 && (router_opts.gnntype < 2)) {
                 // pres_fac = router_opts.initial_pres_fac;
                 pres_fac *= pres_fac_mult;
