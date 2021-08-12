@@ -378,7 +378,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
     bb_fac = 3;
     acc_fac = 1;
     // Even GNN Inference gets the Hyper Pres Fac, for now.
-    if (router_opts.gnntype > 0) {
+    if (router_opts.gnntype > 1) {
         pres_fac = 50;
         initial_pres_fac = 50;
         pres_fac_mult = 10;
@@ -562,7 +562,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                 std::ofstream myfile;
                
                 myfile.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-hcost.csv");
-                myfile<< "history_cost\n";  
+                myfile<< "present_cost\n";  
                 for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
                 {               
                 auto& node = device_ctx.rr_nodes[inode];
@@ -597,7 +597,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
             inf_time_t1 = iteration_timer.elapsed_sec();
             
             // * Update to pass in arch & circuit arguments.
-            string command = "/mnt/e/benchmarks/Outputs/inf.sh > pyoutput.txt";
+            string command = "/benchmarks/Outputs/inf.sh > pyoutput.txt";
             system(command.c_str());
 
             inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
@@ -911,7 +911,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
 
                 routing_is_successful = true;
 
-                //Update best metrics
+                //Update best metricsf
                 if (timing_info) {
                     timing_driven_check_net_delays(net_delay);
 
