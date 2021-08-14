@@ -96,26 +96,26 @@ int main(int argc, const char** argv) {
         auto& atom_ctx  = g_vpr_ctx.atom();
         // atom_ctx.nlist
        
-        for (auto net_id : cluster_ctx.clb_nlist.nets()) {  
+        // for (auto net_id : cluster_ctx.clb_nlist.nets()) {  
            
-                    t_trace* tptr = route_ctx.trace[net_id].head;
+        //             t_trace* tptr = route_ctx.trace[net_id].head;
     
-                    if(tptr !=nullptr)
-                    {
-                        int source = route_ctx.trace[net_id].head->index;
-                        int sink = route_ctx.trace[net_id].tail->index;
+        //             if(tptr !=nullptr)
+        //             {
+        //                 int source = route_ctx.trace[net_id].head->index;
+        //                 int sink = route_ctx.trace[net_id].tail->index;
                         
-                        while (tptr != nullptr) {
-                            int inode = tptr->index;
-                            auto& node = device_ctx.rr_nodes[inode];
-                            node.set_source_node(source);
-                            node.set_sink_node(sink);
-                            node.set_num_netlists(1);
+        //                 while (tptr != nullptr) {
+        //                     int inode = tptr->index;
+        //                     auto& node = device_ctx.rr_nodes[inode];
+        //                     node.set_source_node(source);
+        //                     node.set_sink_node(sink);
+        //                     node.set_num_netlists(1);
 
-                            tptr = tptr->next;
-                        }         
-                    }
-         }
+        //                     tptr = tptr->next;
+        //                 }         
+        //             }
+        //  }
         
        
         

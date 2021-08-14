@@ -331,7 +331,8 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
 
     //sort so net with most sinks is routed first.
     auto sorted_nets = std::vector<ClusterNetId>(cluster_ctx.clb_nlist.nets().begin(), cluster_ctx.clb_nlist.nets().end());
-    std::sort(sorted_nets.begin(), sorted_nets.end(), more_sinks_than());
+    std::random_shuffle(sorted_nets.begin(), sorted_nets.end());
+    // std::sort(sorted_nets.begin(), sorted_nets.end(), more_sinks_than());
 
     /*
      * Configure the routing predictor
@@ -378,7 +379,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
     bb_fac = 3;
     acc_fac = 1;
     // Even GNN Inference gets the Hyper Pres Fac, for now.
-    if (router_opts.gnntype > 0) {
+    if (router_opts.gnntype > 1) {
         pres_fac = 50;
         initial_pres_fac = 50;
         pres_fac_mult = 10;
@@ -465,6 +466,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
     ssize_t read;
 
     for (itry = 1; itry <= router_opts.max_router_iterations; ++itry) {
+        std::random_shuffle(sorted_nets.begin(), sorted_nets.end());
         RouterStats router_iteration_stats;
 
         /* Reset "is_routed" and "is_fixed" flags to indicate nets not pre-routed (yet) */
@@ -493,25 +495,25 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         //  /*
         //  * Route each net
         //  */
-        // for (auto net_id : sorted_nets) {
+        for (auto net_id : sorted_nets) {
             
-        //     bool is_routable = try_timing_driven_route_net(net_id,
-        //                                                    itry,
-        //                                                    pres_fac,
-        //                                                    router_opts,
-        //                                                    connections_inf,
-        //                                                    router_iteration_stats,
-        //                                                    route_structs.pin_criticality,
-        //                                                    route_structs.rt_node_of_sink,
-        //                                                    net_delay,
-        //                                                    *router_lookahead,
-        //                                                    netlist_pin_lookup,
-        //                                                    route_timing_info, budgeting_inf);
+            bool is_routable = try_timing_driven_route_net(net_id,
+                                                           itry,
+                                                           pres_fac,
+                                                           router_opts,
+                                                           connections_inf,
+                                                           router_iteration_stats,
+                                                           route_structs.pin_criticality,
+                                                           route_structs.rt_node_of_sink,
+                                                           net_delay,
+                                                           *router_lookahead,
+                                                           netlist_pin_lookup,
+                                                           route_timing_info, budgeting_inf);
 
-        //     if (!is_routable) {
-        //         return (false); //Impossible to route
-        //     }
-        // }
+            if (!is_routable) {
+                return (false); //Impossible to route
+            }
+        }
 
         
 
@@ -562,11 +564,11 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                 std::ofstream myfile;
                
                 myfile.open("inference/"+route_ctx.archname+"__"+route_ctx.circuitname+run_type+"graph_data-hcost.csv");
-                myfile<< "history_cost\n";  
+                myfile<< "present_cost\n";  
                 for (size_t inode = 0; inode < device_ctx.rr_nodes.size(); inode++)
                 {               
                 auto& node = device_ctx.rr_nodes[inode];
-                myfile << to_string(route_ctx.rr_node_route_inf[inode].acc_cost)+"\n" ;
+                myfile << to_string(route_ctx.rr_node_route_inf[inode].acc_cost * route_ctx.rr_node_route_inf[inode].pres_cost)+"\n" ;
                 
                 }
                 myfile.close();
@@ -684,28 +686,28 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
              
 
         }
-        /* 
-        * Route each net
-         */
-        for (auto net_id : sorted_nets) {
+        // /* 
+        // * Route each net
+        //  */
+        // for (auto net_id : sorted_nets) {
             
-            bool is_routable = try_timing_driven_route_net(net_id,
-                                                           itry,
-                                                           pres_fac,
-                                                           router_opts,
-                                                           connections_inf,
-                                                           router_iteration_stats,
-                                                           route_structs.pin_criticality,
-                                                           route_structs.rt_node_of_sink,
-                                                           net_delay,
-                                                           *router_lookahead,
-                                                           netlist_pin_lookup,
-                                                           route_timing_info, budgeting_inf);
+        //     bool is_routable = try_timing_driven_route_net(net_id,
+        //                                                    itry,
+        //                                                    pres_fac,
+        //                                                    router_opts,
+        //                                                    connections_inf,
+        //                                                    router_iteration_stats,
+        //                                                    route_structs.pin_criticality,
+        //                                                    route_structs.rt_node_of_sink,
+        //                                                    net_delay,
+        //                                                    *router_lookahead,
+        //                                                    netlist_pin_lookup,
+        //                                                    route_timing_info, budgeting_inf);
 
-            if (!is_routable) {
-                return (false); //Impossible to route
-            }
-        }
+        //     if (!is_routable) {
+        //         return (false); //Impossible to route
+        //     }
+        // }
         //Update pres_fac and resource costs
         auto& device_ctx =  g_vpr_ctx.mutable_device();
        
@@ -1001,7 +1003,8 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
                     return cluster_ctx.clb_nlist.net_sinks(net_index1).size() > cluster_ctx.clb_nlist.net_sinks(net_index2).size();
                 }
             };
-            std::sort(sorted_nets.begin(), sorted_nets.end(), more_sinks_than());
+            std::random_shuffle(sorted_nets.begin(), sorted_nets.end());
+            // std::sort(sorted_nets.begin(), sorted_nets.end(), more_sinks_than());
             mynetfile.open(file_name+"graph_data-netorder.csv");            
             for (auto net_id : sorted_nets) {
                 if (!cluster_ctx.clb_nlist.net_is_ignored(net_id)) {
@@ -1051,14 +1054,15 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
 
         // * History Costs are Additive, but Present costs are per iteration.       
         // Modified to ignore history costs for the first few iterations, instead of just the first iteration.
-        if (itry < 3 && (router_opts.gnntype < 2)) {
+        if (itry < 3 ) {
                 // pres_fac = router_opts.initial_pres_fac;
                 pres_fac *= pres_fac_mult;
                 pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */
 
         } 
         else {
-            pres_fac *= pres_fac_mult;
+            pres_fac *= pres_fac_mult; 
+            // pres_fac = min(pres_fac, static_cast<float>(HUGE_POSITIVE_FLOAT / 1e20));
             pathfinder_update_cost(pres_fac,acc_fac);
         }
 
