@@ -599,7 +599,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
             inf_time_t1 = iteration_timer.elapsed_sec();
             
             // * Update to pass in arch & circuit arguments.
-            string command = "/mnt/e/benchmarks/Outputs/inf.sh > pyoutput.txt";
+            string command = "/benchmarks/Outputs/inf.sh > pyoutput.txt";
             system(command.c_str());
 
             inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
@@ -913,7 +913,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
 
                 routing_is_successful = true;
 
-                //Update best metrics
+                //Update best metricsf
                 if (timing_info) {
                     timing_driven_check_net_delays(net_delay);
 
@@ -1053,8 +1053,8 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
         }
 
         // * History Costs are Additive, but Present costs are per iteration.       
-        // Modified to ignore history costs for the first few iterations, instead of just the first iteration.
-        if (itry < 3 ) {
+        // Modified to ignore history costs for the first few giterations, instead of just the first iteration.
+        if (itry < 3 && (router_opts.gnntype < 2)) {
                 // pres_fac = router_opts.initial_pres_fac;
                 pres_fac *= pres_fac_mult;
                 pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */

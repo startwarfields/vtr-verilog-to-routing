@@ -67,9 +67,9 @@ include(CheckCXXCompilerFlag)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) #No compiler specific extensions
-set (CMAKE_CXX_FLAGS "-I/home/spicygremlin/anaconda3/envs/torch/include/python3.8 -I/home/spicygremlin/anaconda3/envs/torch/include/python3.8  -Wno-unused-result -Wsign-compare -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O3 -ffunction-sections -pipe -isystem /home/spicygremlin/anaconda3/envs/torch/include -fdebug-prefix-map=/tmp/build/80754af9/python_1621447006237/work=/usr/local/src/conda/python-3.8.10 -fdebug-prefix-map=/home/spicygremlin/anaconda3/envs/torch=/usr/local/src/conda-prefix -fno-semantic-interposition -fuse-linker-plugin -ffat-lto-objects -flto-partition=none -flto -DNDEBUG -fwrapv -O3 -Wall")
+set (CMAKE_CXX_FLAGS "-O3 -Wall")
 # set (CMAKE_SHARED_LINKER_FLAGS "-L/home/spicygremlin/anaconda3/envs/torch/lib/python3.8/config-3.8-x86_64-linux-gnu -L/home/spicygremlin/anaconda3/envs/torch/lib  -lcrypt -lpthread -ldl  -lutil -lrt -lm -lm")
-add_link_options("-L/home/spicygremlin/anaconda3/envs/torch/lib/python3.8/config-3.8-x86_64-linux-gnu -L/home/spicygremlin/anaconda3/envs/torch/lib  -lpython-lcrypt -lpthread -ldl  -lutil -lrt -lm -lm")
+# add_link_options("-L/home/spicygremlin/anaconda3/envs/torch/lib/python3.8/config-3.8-x86_64-linux-gnu -L/home/spicygremlin/anaconda3/envs/torch/lib  -lpython-lcrypt -lpthread -ldl  -lutil -lrt -lm -lm")
 #
 
 # Interprocedural optimization
@@ -345,7 +345,7 @@ list(APPEND DIRS_TO_FORMAT_CPP "${CMAKE_CURRENT_SOURCE_DIR}/libs/libpugiutil")
 list(APPEND DIRS_TO_FORMAT_CPP "${CMAKE_CURRENT_SOURCE_DIR}/libs/liblog")
 include(AutoClangFormat)
 
-find_package(PythonLibs REQUIRED)
-include_directories(${PYTHON_INCLUDE_DIRS})
+# find_package(PythonLibs REQUIRED)
+# include_directories(${PYTHON_INCLUDE_DIRS})
 # add_executable(VPR ${SOURCE_FILES})
 # target_link_libraries(VPR ${PYTHON_LIBRARIES})

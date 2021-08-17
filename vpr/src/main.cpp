@@ -62,7 +62,7 @@ int main(int argc, const char** argv) {
         // Get The Architecture Name Dynamically.
         char *archname_file = strrchr((char *) vpr_setup.FileNameOpts.ArchFile.c_str(), '/');
         char *metric_dir = strtok((char *) vpr_setup.FileNameOpts.ArchFile.c_str(), "/");
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 2; i++) {
             metric_dir = strtok(NULL, "/");
         }
         char *token = strtok(((char *) (archname_file+1)), ".");
