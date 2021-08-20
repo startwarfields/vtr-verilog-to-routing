@@ -340,6 +340,9 @@ class VprContext : public Context {
     const RoutingContext& routing() const { return routing_; }
     RoutingContext& mutable_routing() { return routing_; }
 
+    std::string archname;
+    std::string circuitname;
+
     //Should the program pause at the next convenient time?
     bool forced_pause() const { return force_pause_; }
     void set_forced_pause(bool val) { force_pause_ = val; }

@@ -353,6 +353,7 @@ static void SetupRouterOpts(const t_options& Options, t_router_opts* RouterOpts)
     RouterOpts->output_final_costs = Options.output_final_costs;
     RouterOpts->collect_data = Options.collect_data;
     RouterOpts->strict_checks = Options.strict_checks;
+    RouterOpts->gvminw = Options.gvminw;
 }
 
 static void SetupAnnealSched(const t_options& Options,

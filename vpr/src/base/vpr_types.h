@@ -954,6 +954,7 @@ struct t_router_opts {
     bool collect_data;
     bool input_initial_costs;
     bool output_final_costs;
+    bool gvminw;
 };
 
 struct t_analysis_opts {

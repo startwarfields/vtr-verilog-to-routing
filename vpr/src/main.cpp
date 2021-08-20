@@ -67,8 +67,9 @@ int main(int argc, const char** argv) {
         }
         char *token = strtok(((char *) (archname_file+1)), ".");
         g_vpr_ctx.mutable_routing().archname= token;
-         g_vpr_ctx.mutable_routing().metric_dir = metric_dir;
-
+        g_vpr_ctx.mutable_routing().metric_dir = metric_dir;
+        g_vpr_ctx.archname =  g_vpr_ctx.mutable_routing().archname;
+        g_vpr_ctx.circuitname =  g_vpr_ctx.mutable_routing().circuitname;
         if (Options.show_version) {
             return SUCCESS_EXIT_CODE;
         }

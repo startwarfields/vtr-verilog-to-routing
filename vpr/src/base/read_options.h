@@ -120,6 +120,7 @@ struct t_options {
     argparse::ArgValue<int> min_incremental_reroute_fanout;
     argparse::ArgValue<int> GNNType; // 0. Default 1. Hyper Pres Fac  2. GNN Inference 3. Intake Initial Costs
     argparse::ArgValue<bool> collect_data; // Collect all router features
+    argparse::ArgValue<bool> gvminw; // Collect all router features
     argparse::ArgValue<bool> collect_metrics; // Output Router Iteration Statistics in a CSV (rather than log)
     argparse::ArgValue<bool> output_final_costs; // Outputs Final History Cost as "prediction-goal.csv" in output directory
 

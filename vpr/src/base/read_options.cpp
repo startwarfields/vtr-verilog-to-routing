@@ -1431,6 +1431,10 @@ static argparse::ArgumentParser create_arg_parser(std::string prog_name, t_optio
         .help("Outputs RR Graph & Node Data to CSVs")
         .default_value("off")
         .show_in(argparse::ShowIn::HELP_ONLY);
+    route_grp.add_argument<bool, ParseOnOff>(args.gvminw, "--gvminw")
+        .help("Appends gvminw to a csv for analysis.")
+        .default_value("off")
+        .show_in(argparse::ShowIn::HELP_ONLY);
     route_grp.add_argument<bool, ParseOnOff>(args.collect_metrics, "--collect_metrics")
         .help("Outputs Routing Metrics to csv file. Named based on GNN Type")
         .default_value("on")

@@ -11,7 +11,7 @@ using namespace std;
 #include "vtr_memory.h"
 #include "vtr_assert.h"
 #include "vtr_log.h"
-
+#include "vpr_api.h"
 #include "vpr_types.h"
 #include "vpr_utils.h"
 #include "vpr_error.h"
@@ -356,7 +356,14 @@ int binary_search_place_and_route(t_placer_opts placer_opts,
                     &warnings);
 
     init_draw_coords(final);
-
+    if (router_opts.gvminw) { 
+    VTR_LOG("I exist!!! %s %s\n",g_vpr_ctx.archname,g_vpr_ctx.circuitname);
+    std::ofstream minw_file;
+    minw_file.open("../../minw_data/minw.csv", std::ios_base::app);
+    minw_file << g_vpr_ctx.archname << "," << g_vpr_ctx.circuitname << "," << final << "\n";
+    minw_file.close();
+    }
+    
     restore_routing(best_routing, route_ctx.clb_opins_used_locally, saved_clb_opins_used_locally);
 
     if (Fc_clipped) {
@@ -368,7 +375,7 @@ int binary_search_place_and_route(t_placer_opts placer_opts,
 
     free_saved_routing(best_routing);
     fflush(stdout);
-
+   
     return (final);
 }
 
