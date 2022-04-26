@@ -1330,7 +1330,7 @@ static argparse::ArgumentParser create_arg_parser(std::string prog_name, t_optio
         .help(
             "Maximum number of Pathfinder-based routing iterations before the circuit is"
             " declared unroutable at a given channel width")
-        .default_value("50")
+        .default_value("1500")
         .show_in(argparse::ShowIn::HELP_ONLY);
 
     route_grp.add_argument(args.first_iter_pres_fac, "--first_iter_pres_fac")
@@ -1340,19 +1340,19 @@ static argparse::ArgumentParser create_arg_parser(std::string prog_name, t_optio
 
     route_grp.add_argument(args.initial_pres_fac, "--initial_pres_fac")
         .help("Sets the present overuse factor for the second routing iteration")
-        .default_value("0.5")
+        .default_value("5.0")
         .show_in(argparse::ShowIn::HELP_ONLY);
 
     route_grp.add_argument(args.pres_fac_mult, "--pres_fac_mult")
         .help(
             "Sets the growth factor by which the present overuse penalty factor is"
             " multiplied after each routing iteration")
-        .default_value("1.3")
+        .default_value("1.0")
         .show_in(argparse::ShowIn::HELP_ONLY);
 
     route_grp.add_argument(args.acc_fac, "--acc_fac")
         .help("Specifies the accumulated overuse factor (historical congestion cost factor)")
-        .default_value("1.0")
+        .default_value("5.0")
         .show_in(argparse::ShowIn::HELP_ONLY);
 
     route_grp.add_argument(args.bb_factor, "--bb_factor")

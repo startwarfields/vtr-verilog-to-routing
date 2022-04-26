@@ -333,7 +333,17 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
     auto sorted_nets = std::vector<ClusterNetId>(cluster_ctx.clb_nlist.nets().begin(), cluster_ctx.clb_nlist.nets().end());
     std::random_shuffle(sorted_nets.begin(), sorted_nets.end());
     // std::sort(sorted_nets.begin(), sorted_nets.end(), more_sinks_than());
-
+    srand(420);
+        for ( std::size_t i = 0; i < sorted_nets.size();i++) 
+        {
+             std::size_t randIndex0 = rand ( ) % sorted_nets . size () ,
+            randIndex1 = rand ( ) % ( sorted_nets.size() - 1 ) ;
+            if ( randIndex1 >= randIndex0 )
+            randIndex1 ++;
+            auto swap = sorted_nets [ randIndex0 ] ;
+            sorted_nets [ randIndex0 ] = sorted_nets [ randIndex1 ] ;
+            sorted_nets [ randIndex1 ] = swap ;
+        }
     /*
      * Configure the routing predictor
      */
@@ -371,19 +381,21 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
      * Routing parameters
      */
     float pres_fac = router_opts.initial_pres_fac; /* Typically 0 -> ignore cong. */
-    float pres_fac_mult = 1.3;
+    float pres_fac_mult = 1.0;
     // float initial_pres_fac =  router_opts.first_iter_pres_fac;
     float initial_pres_fac =  router_opts.initial_pres_fac;
+    // initial_pres_fac = 5;
     float acc_fac = router_opts.acc_fac;
     int bb_fac = router_opts.bb_factor;
     bb_fac = 3;
     acc_fac = 1;
     // Even GNN Inference gets the Hyper Pres Fac, for now.
     if (router_opts.gnntype > 1) {
-        pres_fac = 50;
-        initial_pres_fac = 50;
-        pres_fac_mult = 10;
-        bb_fac = 3;
+        pres_fac = 5.0;
+        initial_pres_fac = 5.0;
+        pres_fac_mult = 1.0;
+
+        // bb_fac = 3;
     }
   
 
@@ -517,7 +529,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
 
         
 
-        if ((router_opts.gnntype == 1) && itry == 1) {
+        if ((router_opts.gnntype == 1) && itry == 2) {
               // This code outputs the graph data to a local directory for inference.
             
                 float inf_time_t1 = iteration_timer.elapsed_sec();
@@ -599,7 +611,7 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
             inf_time_t1 = iteration_timer.elapsed_sec();
             
             // * Update to pass in arch & circuit arguments.
-            string command = "/benchmarks/Outputs/inf.sh > pyoutput.txt";
+            string command = "/mnt/e/benchmarks/Outputs/inf.sh > pyoutput.txt";
             system(command.c_str());
 
             inf_time_t2 = iteration_timer.elapsed_sec() - inf_time_t1;
@@ -1054,14 +1066,19 @@ bool try_timing_driven_route(const t_router_opts& router_opts,
 
         // * History Costs are Additive, but Present costs are per iteration.       
         // Modified to ignore history costs for the first few giterations, instead of just the first iteration.
-        if (itry < 3 && (router_opts.gnntype < 2)) {
+        if (itry < 1 && (router_opts.gnntype < 2)) {
                 // pres_fac = router_opts.initial_pres_fac;
                 pres_fac *= pres_fac_mult;
+                // pres_fac = 5;
+
+                // router_iteration_stats.connections_routed = 0;
                 pathfinder_update_cost(pres_fac, 0.); /* Acc_fac=0 for first iter. */
 
         } 
         else {
             pres_fac *= pres_fac_mult; 
+            // pres_fac =
+            acc_fac = 5.0;
             // pres_fac = min(pres_fac, static_cast<float>(HUGE_POSITIVE_FLOAT / 1e20));
             pathfinder_update_cost(pres_fac,acc_fac);
         }
